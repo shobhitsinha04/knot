@@ -66,10 +66,11 @@ No UI beyond VS Code notifications and output channel.
 - [ ] Implement `OllamaService.embed(text, model)` — POST /api/embeddings,
       returns float[]
 
-**Helicone Local Proxy**
-- [ ] Set up Helicone local proxy as a child process started on activation
-- [ ] Route all OllamaService HTTP calls through proxy port
-- [ ] Verify logs are written to globalStorageUri/logs/
+**Observability — DEFERRED to post-v1 (decision 011)**
+- Helicone is not part of v1. OllamaService calls Ollama directly via a
+  configurable `baseUrl` (default `http://localhost:11434`), structured so a
+  local observability proxy can be inserted later with no call-site changes.
+- Dev-time debugging in v1 uses the VS Code Output Channel.
 
 **Config Manager**
 - [ ] Implement `ConfigManager` — reads/writes config.json in

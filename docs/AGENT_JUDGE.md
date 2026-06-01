@@ -114,7 +114,10 @@ This is a binary check. LocalPilot's core promise is that nothing leaves
 the machine. The Judge must verify:
 
 - Every HTTP/HTTPS call in the codebase goes to localhost only
-  (Ollama at :11434 or Helicone proxy at its local port)
+  (Ollama at :11434; the Helicone proxy is deferred per decision 011, so a
+  local observability proxy port is also acceptable if one is reintroduced).
+  The sanctioned exceptions are downloading Ollama and pulling models during
+  onboarding, as defined in ONBOARDING_FLOW.md.
 - No analytics, telemetry, or tracking calls of any kind
 - No calls to external APIs even for non-sensitive data
 - No user data written to any path outside globalStorageUri or

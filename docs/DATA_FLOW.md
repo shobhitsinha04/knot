@@ -33,7 +33,7 @@ Ollama Service — POST localhost:11434/api/generate
   ├── prompt: assembled FIM prompt
   ├── stream: false (completions are not streamed, returned whole)
   ├── options: { temperature: 0.1, top_p: 0.95, stop: ["\n\n"] }
-  └── routed via Helicone local proxy
+  └── sent directly to Ollama (configurable base URL, default :11434)
         │
         ▼
 Ollama returns completion text
@@ -90,7 +90,7 @@ Ollama Service — POST localhost:11434/api/generate
   ├── prompt: assembled edit prompt
   ├── stream: true
   ├── options: { temperature: 0.2, top_p: 0.95 }
-  └── routed via Helicone local proxy
+  └── sent directly to Ollama (configurable base URL, default :11434)
         │
         ▼
 Ollama streams response tokens
@@ -154,7 +154,7 @@ Ollama Service — POST localhost:11434/api/chat
   ├── messages: assembled prompt as message array
   ├── stream: true
   ├── options: { temperature: 0.7, top_p: 0.95 }
-  └── routed via Helicone local proxy
+  └── sent directly to Ollama (configurable base URL, default :11434)
         │
         ▼
 Ollama streams response tokens
@@ -322,38 +322,30 @@ Done — no UI indication unless error occurs
 
 ---
 
-## 7. Helicone Local Proxy Flow
+## 7. Ollama Request Flow (no proxy in v1)
+
+The Helicone observability proxy is deferred to post-v1 (decision 011).
+In v1 every Ollama Service call goes straight to Ollama:
 
 ```
 Any Ollama Service call
         │
         ▼
-HTTP request constructed for localhost:11434
+HTTP request constructed for the Ollama base URL
+  └── default http://localhost:11434, configurable
         │
         ▼
-Request routed through Helicone local proxy (localhost:8788)
-  └── Helicone intercepts, logs:
-        ├── timestamp
-        ├── model name
-        ├── prompt (sanitised — no file contents logged in v1)
-        ├── response
-        ├── latency
-        └── token count
-        │
-        ▼
-Helicone forwards request to Ollama at localhost:11434
-        │
-        ▼
-Ollama responds → Helicone forwards response back
+Ollama responds (whole, or streamed)
         │
         ▼
 Ollama Service receives response — continues normally
 ```
 
-**Privacy note:** In v1, Helicone runs entirely locally. Logs are written
-to `~/.vscode/extensions/localpilot/logs/` only. No data is sent to
-Helicone's cloud. The local proxy is used purely for development
-observability.
+**Privacy note:** Every HTTP call still targets localhost only — nothing
+leaves the machine. The base URL is configurable so a post-v1 local
+observability proxy (or opt-in cloud dashboard) can be inserted in front of
+Ollama without changing any call site. Until then, dev-time debugging uses
+the VS Code Output Channel.
 
 ---
 
