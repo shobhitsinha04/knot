@@ -199,6 +199,10 @@ control.
 
 ### 008 — Helicone local proxy for observability
 
+**Status:** AMENDED by decision 011 — the Helicone layer is deferred to
+post-v1. The reasoning below stands as the original rationale, but the
+implementation is not part of v1. See 011 for the current position.
+
 **Decision:** Helicone's local proxy sits between the extension and Ollama
 for all LLM calls in development. No data is sent to Helicone's cloud in v1.
 
@@ -261,3 +265,45 @@ larger tiers.
 - Tier 1 uses qwen2.5-coder:1.5b for both chat and autocomplete
 - Onboarding shows an honest limitation notice on 8GB machines
 - Performance testing must include a Tier 1 machine
+
+---
+
+### 011 — Defer the Helicone observability layer to post-v1
+
+**Decision:** The Helicone local proxy is deferred. In v1 the OllamaService
+communicates directly with Ollama at `localhost:11434` through a configurable
+base URL. No observability proxy runs in v1. This amends decision 008.
+
+**Date:** 2026-06-01
+
+**Why:** Helicone ships no lightweight, spawnable local proxy. Its
+self-hosted form is a full Docker Compose stack (Postgres, ClickHouse, MinIO,
+a web dashboard, a Workers-based proxy run via wrangler) — a production
+observability platform, not a sidecar. It cannot be started as a single child
+process on activation the way ARCHITECTURE.md assumed, and requiring Docker on
+every machine contradicts the zero-config promise and the goal of shipping to
+beta users in Phase 7. The Helicone cloud form sends data off-machine,
+violating the privacy promise (already rejected in 008). The actual v1
+need — dev-time request/latency/token logging — does not justify standing up
+an analytics platform.
+
+**Alternatives considered:**
+- Thin in-house local Node proxy (~50 lines: forward :8788 → :11434, append
+  JSONL logs to globalStorageUri/logs/) — viable and may return post-v1, but
+  it is not needed to ship v1's four features, so it is deferred rather than
+  built now.
+- Helicone self-hosted via Docker — rejected for v1: heavy, requires Docker,
+  incompatible with child-process-on-activation and zero-config.
+- Helicone cloud — rejected on privacy grounds, consistent with 008.
+
+**Consequences:**
+- OllamaService takes a configurable `baseUrl`, defaulting to
+  `http://localhost:11434`, so an observability proxy can be inserted later
+  with no call-site changes.
+- No proxy log output in v1. globalStorageUri/logs/ may still be used for
+  general extension diagnostics, not Helicone logs.
+- ARCHITECTURE.md, TECH_STACK.md, DATA_FLOW.md, and PHASES.md are updated to
+  remove Helicone from the v1 path. The privacy invariant is unchanged: every
+  HTTP call still goes to localhost only.
+- Post-v1: revisit observability (a thin local proxy, or an opt-in Helicone
+  cloud dashboard) under a new decision.

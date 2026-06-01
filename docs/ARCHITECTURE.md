@@ -41,14 +41,19 @@ scripting, and testing significantly. Windows and Linux are post-v1.
 │  │  └──────────────────────────────────────────┘  │  │
 │  └─────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────┘
-          │                          │
-          ▼                          ▼
-   ┌─────────────┐          ┌────────────────┐
-   │   Ollama    │          │   Helicone     │
-   │  (localhost │          │  (localhost    │
-   │   :11434)   │          │   proxy)       │
-   └─────────────┘          └────────────────┘
+          │
+          ▼
+   ┌─────────────┐
+   │   Ollama    │
+   │  (localhost │
+   │   :11434)   │
+   └─────────────┘
 ```
+
+> **Note (decision 011):** The Helicone observability proxy shown in earlier
+> drafts is deferred to post-v1. In v1 the Ollama Service calls Ollama
+> directly via a configurable base URL (default `localhost:11434`). A local
+> observability proxy can be reintroduced later behind that same base URL.
 
 ## Components
 
@@ -73,7 +78,10 @@ Wrapper around Ollama's REST API (localhost:11434). Handles:
 - Pulling models
 - Sending chat and completion requests
 - Streaming responses back to the UI
-All calls are routed through Helicone's local proxy for observability.
+All calls go directly to Ollama via a configurable base URL (default
+`localhost:11434`). The Helicone observability proxy is deferred to post-v1
+(decision 011); when reintroduced it sits behind this same base URL with no
+call-site changes.
 
 ### Context Service
 Responsible for retrieving relevant code context for any given query.
@@ -111,15 +119,13 @@ Embedded vector database stored on disk inside the extension's global
 storage directory. No separate process. Stores embeddings of all code files 
 in the current workspace. One index per workspace.
 
-### Helicone (Local Proxy)
-Sits between the Ollama Service and Ollama itself. Every LLM call passes 
-through it. Provides:
-- Request/response logging
-- Latency tracking
-- Error visibility
-- Token usage tracking
-Runs locally — no data leaves the machine. Used purely for observability 
-during development and debugging.
+### Observability (Deferred — post-v1)
+There is no observability proxy in v1 (decision 011). The Ollama Service
+talks to Ollama directly. Post-v1, a local observability layer — a thin
+in-house proxy or an opt-in Helicone cloud dashboard — may be added behind
+the Ollama Service's configurable base URL to provide request/response
+logging, latency tracking, error visibility, and token usage tracking.
+Any such layer must keep all data on the machine.
 
 ## Communication Patterns
 
@@ -129,8 +135,9 @@ Uses VS Code's built-in postMessage API. Webview sends user actions
 (streaming tokens, status updates, errors).
 
 ### Extension Host ↔ Ollama
-HTTP REST calls to localhost:11434 via Helicone proxy. Streaming responses 
-handled via async generators, tokens forwarded to webview as they arrive.
+HTTP REST calls directly to localhost:11434 (configurable base URL).
+Streaming responses handled via async generators, tokens forwarded to the
+webview as they arrive.
 
 ### Extension Host ↔ LanceDB
 Direct function calls via the LanceDB TypeScript SDK. Synchronous for 
@@ -145,7 +152,7 @@ All data lives in VS Code's globalStorageUri for the extension:
 ├── models/          # Managed by Ollama, not us
 ├── index/           # LanceDB vector index (per workspace)
 ├── config.json      # User preferences, selected model, onboarding state
-└── logs/            # Helicone local logs
+└── logs/            # Extension diagnostic logs (no proxy logs in v1)
 ```
 
 Nothing is stored outside this directory. Nothing is transmitted externally.
@@ -153,8 +160,9 @@ Nothing is stored outside this directory. Nothing is transmitted externally.
 ## What This Architecture Intentionally Avoids
 
 - No backend server of any kind
-- No cloud API calls (except optionally Helicone cloud if user opts in 
-  post-v1 — off by default)
+- No cloud API calls (a post-v1 opt-in observability dashboard, off by
+  default, is the only contemplated exception — see decision 011)
+- No observability proxy in v1 (Helicone deferred — decision 011)
 - No separate database process (LanceDB is embedded)
 - No electron or custom app shell — pure VS Code extension
 - No telemetry of any kind in v1
