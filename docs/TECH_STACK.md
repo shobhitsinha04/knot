@@ -112,21 +112,23 @@ the vector search extension is experimental and setup is fragile on macOS.
 
 ## Observability
 
-### Helicone (Local Proxy)
-**Why:** Sits between our Ollama Service and Ollama itself. Logs every
-LLM call locally — prompt, response, latency, token count. Invaluable
-for debugging why a completion is slow or why a response is wrong.
+### Deferred to post-v1 (decision 011)
 
-**Important:** In v1, only the local proxy is used. No data is sent to
-Helicone's cloud. The proxy runs as a local process started by the
-extension on activation.
+There is no observability tool in the v1 stack. The Helicone local proxy
+originally planned here is deferred: Helicone ships no lightweight spawnable
+local proxy (its self-hosted form is a full Docker Compose stack), which is
+incompatible with the child-process-on-activation model and the zero-config
+promise. See DECISIONS.md entry 011 for the full reasoning.
 
-**How it runs:** Helicone's local proxy is started as a child process
-by the extension on activation and stopped when VS Code closes.
+In v1 the Ollama Service calls Ollama directly via a configurable base URL
+(default `localhost:11434`). For dev-time debugging, the VS Code Output
+Channel is used.
 
-**Post-v1:** Offer users an opt-in to Helicone cloud for a proper
-dashboard with latency graphs, error rates, and prompt history. Off
-by default — privacy first.
+**Post-v1:** Revisit observability under a new decision — either a thin
+in-house local logging proxy (forward a local port → :11434, append JSONL
+logs to globalStorageUri/logs/) or an opt-in Helicone cloud dashboard
+(off by default, privacy first). Either way it sits behind the Ollama
+Service's base URL, so no call sites change.
 
 ---
 

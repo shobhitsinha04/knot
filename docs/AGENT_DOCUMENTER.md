@@ -12,6 +12,12 @@ and no knowledge of what has actually been built, what decisions were
 made during implementation, or what problems were encountered. The
 Documenter fills that gap.
 
+> **Note:** Some examples below reference a "Helicone proxy" on port 8788.
+> These are illustrative format examples only — they predate decision 011,
+> which defers the Helicone observability layer to post-v1. There is no
+> proxy in v1; OllamaService calls Ollama directly. Treat the Helicone
+> mentions purely as demonstrations of *how* to write an entry.
+
 ---
 
 ## When to Run the Documenter
