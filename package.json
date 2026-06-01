@@ -24,11 +24,18 @@
     "privacy"
   ],
   "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "commands": [
       {
         "command": "localpilot.helloWorld",
         "title": "LocalPilot: Hello World"
+      },
+      {
+        "command": "localpilot.runSmokeTest",
+        "title": "LocalPilot: Run Phase 1 Smoke Test"
       }
     ]
   },
