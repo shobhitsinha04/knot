@@ -335,3 +335,35 @@ also matches the device the spec itself uses as the Tier 3 example.
 - Boundary unit tests assert 36 → Tier 3 and 37 → Tier 4.
 - Previously recorded only as a code comment in constants.ts; now formalised
   here (logged in response to the Phase 1 Judge review).
+
+---
+
+### 013 — Inline completion timeout is 5s (amends DATA_FLOW §1's 3s)
+
+**Decision:** The inline-completion request budget (`COMPLETION_TIMEOUT_MS`) is
+5000ms, not the 3000ms stated in DATA_FLOW.md §1.
+
+**Date:** 2026-06-12
+
+**Why:** Live timing against Ollama showed the dominant latency is the *model
+load*, not generation: a cold load of `qwen2.5-coder:1.5b` is ~2.7s (≈2.5s load
++ ~0.1s generate), while a warm request is ~0.33s. A 3s budget aborts the cold
+case, and because a timed-out completion is silent (no error, by design), the
+feature reads as "broken" on the first completion after the model unloads. 5s
+covers a cold load with headroom; the warm path — kept warm by the activation
+pre-warm and `keep_alive` (30m) — stays well under the 2s Definition-of-Done
+target, so the looser ceiling only affects the rare cold completion.
+
+**Alternatives considered:**
+- Keep 3s per spec — rejected: reintroduces the silent-abort-on-cold-load bug.
+- Keep the interim 10s used during debugging — rejected: too far from spec and
+  the DoD; allows completions that are uselessly late.
+
+**Consequences:**
+- `COMPLETION_TIMEOUT_MS = 5000`; per-request latency is logged to the Output
+  channel (`[completion] served in N ms`) so the value can be revisited with
+  real data.
+- DATA_FLOW.md §1's timeout note is annotated to point here.
+- Mitigations that keep the warm path fast (pre-warm on registration,
+  `COMPLETION_KEEP_ALIVE`) are themselves additions beyond DATA_FLOW §1,
+  recorded in the Phase 4 CHANGELOG entry.

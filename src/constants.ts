@@ -254,13 +254,14 @@ export const COMPLETION_DEBOUNCE_MS = 600;
  * Hard budget for a single completion request. A suggestion that doesn't arrive
  * by then is aborted and nothing renders (DATA_FLOW.md §1 — no error surfaced).
  *
- * DATA_FLOW.md specifies 3s, but on slower / disk-constrained machines the first
- * completion (model still warming up) routinely needs longer, and a silent abort
- * looks like "autocomplete is broken". Kept generous here; the per-request
- * latency now prints to the Output channel ("[completion] served in N ms"), so
- * this can be dialed back to ~3s once real numbers are known.
+ * DATA_FLOW.md specifies 3s, but a cold model load is ~2.7s and a 3s budget
+ * aborts it, making autocomplete look broken (the warm path is ~0.3s). Set to 5s
+ * to cover a cold load with headroom while keeping the warm path well under the
+ * 2s DoD; pre-warm + COMPLETION_KEEP_ALIVE keep the model warm in practice. The
+ * deviation from spec is recorded in DECISIONS.md (013); per-request latency
+ * prints to the Output channel ("[completion] served in N ms").
  */
-export const COMPLETION_TIMEOUT_MS = 10_000;
+export const COMPLETION_TIMEOUT_MS = 5_000;
 
 /** Lines of context taken above / below the cursor for the FIM prompt. */
 export const COMPLETION_PREFIX_LINES = 20;
