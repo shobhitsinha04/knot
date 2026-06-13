@@ -52,8 +52,10 @@ User presses Tab → code inserted
 User presses Escape → ghost text dismissed
 ```
 
-**Timeout:** If Ollama does not respond within 3000ms, the request is
-aborted and no ghost text is shown. No error is surfaced to the user.
+**Timeout:** If Ollama does not respond within the budget, the request is
+aborted and no ghost text is shown. No error is surfaced to the user. (The
+budget was raised from 3000ms to 5000ms in implementation — a cold model load
+is ~2.7s and a 3s ceiling aborted it silently; see DECISIONS.md 013.)
 
 **Cancellation:** If the user types before the response arrives, the
 pending request is cancelled via AbortController.

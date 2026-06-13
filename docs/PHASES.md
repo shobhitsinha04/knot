@@ -202,9 +202,13 @@ tested on their own machines.
 - [ ] Implement 3000ms timeout
 
 **Prompt Engine (Completion)**
-- [ ] Implement `PromptEngine.buildFIMPrompt(prefix, suffix, filename,
-      language)` — assembles Fill-in-the-Middle format prompt
-- [ ] Unit tests for FIM prompt format
+- [x] Implement `PromptEngine.buildFIMPrompt(prefix, suffix)` — assembles the
+      Fill-in-the-Middle prompt. (Implemented as `(prefix, suffix)`: the
+      `filename`/`language` originally listed here were dropped after live
+      validation — a leading `<|file_sep|>` filename made the model emit stray
+      markdown fences, so plain FIM gives the cleanest output. Must be sent with
+      `raw: true` so Ollama doesn't apply the instruct chat template.)
+- [x] Unit tests for FIM prompt format
 
 **Completion Flow**
 - [ ] Wire: user pauses → Prompt Engine → OllamaService.complete() →
