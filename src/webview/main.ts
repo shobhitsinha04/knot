@@ -53,6 +53,9 @@ const input = document.getElementById("input") as HTMLTextAreaElement;
 const sendBtn = document.getElementById("send") as HTMLButtonElement;
 const newChatBtn = document.getElementById("new-chat") as HTMLButtonElement;
 const modelName = document.getElementById("model-name") as HTMLElement;
+const autocompleteToggle = document.getElementById(
+  "toggle-autocomplete",
+) as HTMLInputElement;
 
 // --- state ------------------------------------------------------------------
 let generating = false;
@@ -94,10 +97,13 @@ function startAssistantBubble(): void {
   assistantBuffer = "";
   assistantEl = document.createElement("div");
   assistantEl.className = "msg msg-assistant streaming";
-  // Show the blinking cursor immediately so the panel signals "working" during
-  // the (sometimes long) time before the first token arrives, instead of
-  // sitting blank.
-  assistantEl.innerHTML = '<span class="cursor"></span>';
+  // Show an animated typing indicator immediately so the panel clearly signals
+  // "working" during the (sometimes long) wait before the first token arrives,
+  // instead of sitting blank. The first rendered token replaces it (the dots are
+  // swapped for the streaming text + cursor in scheduleRender).
+  assistantEl.innerHTML =
+    '<span class="typing" aria-label="Assistant is thinking">' +
+    "<span></span><span></span><span></span></span>";
   conversation.appendChild(assistantEl);
   scrollToBottom(true);
 }
@@ -244,7 +250,18 @@ sendBtn.addEventListener("click", () => {
   }
 });
 
+// New Chat clears the transcript, which can't be undone — so confirm first with
+// an in-panel dialog (kept inside the chat UI rather than a VS Code system
+// dialog). An already-empty chat just resets without prompting.
 newChatBtn.addEventListener("click", () => {
+  if (conversation.querySelector(".msg, .msg-error")) {
+    showNewChatConfirm();
+  } else {
+    clearChat();
+  }
+});
+
+function clearChat(): void {
   post({ type: "newChat" });
   conversation
     .querySelectorAll(".msg, .msg-error")
@@ -252,6 +269,71 @@ newChatBtn.addEventListener("click", () => {
   emptyState.style.display = "";
   assistantEl = null;
   assistantBuffer = "";
+}
+
+// Build and show the in-panel "Start a new chat?" confirmation. Built from DOM
+// nodes (not innerHTML) so all text is inert and the CSP stays strict.
+function showNewChatConfirm(): void {
+  const backdrop = document.createElement("div");
+  backdrop.className = "confirm-backdrop";
+
+  const dialog = document.createElement("div");
+  dialog.className = "confirm-dialog";
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-modal", "true");
+
+  const title = document.createElement("div");
+  title.className = "confirm-title";
+  title.textContent = "Start a new chat?";
+
+  const body = document.createElement("div");
+  body.className = "confirm-text";
+  body.textContent =
+    "This clears the current conversation. It can't be undone.";
+
+  const actions = document.createElement("div");
+  actions.className = "confirm-actions";
+  const cancelBtn = document.createElement("button");
+  cancelBtn.className = "confirm-btn secondary";
+  cancelBtn.textContent = "Cancel";
+  const confirmBtn = document.createElement("button");
+  confirmBtn.className = "confirm-btn primary";
+  confirmBtn.textContent = "New Chat";
+  actions.append(cancelBtn, confirmBtn);
+
+  dialog.append(title, body, actions);
+  backdrop.appendChild(dialog);
+
+  const close = (): void => {
+    backdrop.remove();
+    document.removeEventListener("keydown", onKey);
+  };
+  function onKey(e: KeyboardEvent): void {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+    }
+  }
+
+  cancelBtn.addEventListener("click", close);
+  confirmBtn.addEventListener("click", () => {
+    clearChat();
+    close();
+  });
+  // Click on the dimmed backdrop (outside the dialog) cancels.
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) close();
+  });
+  document.addEventListener("keydown", onKey);
+
+  document.body.appendChild(backdrop);
+  confirmBtn.focus();
+}
+
+// --- autocomplete toggle ----------------------------------------------------
+// Persist the switch the moment it flips; the host applies it live.
+autocompleteToggle.addEventListener("change", () => {
+  post({ type: "setAutocomplete", enabled: autocompleteToggle.checked });
 });
 
 // Clickable "Try" suggestions in the empty state populate the input.
@@ -270,6 +352,7 @@ window.addEventListener("message", (event: MessageEvent<HostMessage>) => {
   switch (msg.type) {
     case "init":
       modelName.textContent = msg.model;
+      autocompleteToggle.checked = msg.autocompleteEnabled;
       break;
     case "streamStart":
       setGenerating(true);

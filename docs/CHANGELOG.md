@@ -9,6 +9,198 @@ the current state of the codebase before writing any new code.
 
 ---
 
+## Phase 4 — Inline Completions
+**Status:** Approved by Judge Agent
+**Judge Score:** 28/30 (see JUDGE_SCORES.md)
+
+### What Was Built
+
+Tab-autocomplete: ghost-text completions appear when you pause typing, accepted
+with Tab and dismissed with Esc (FEATURES.md, DATA_FLOW.md §1). Powered by the
+Qwen2.5-Coder Fill-in-the-Middle (FIM) model over Ollama. Not a webview feature —
+it uses VS Code's inline completion API.
+
+`PromptEngine.buildFIMPrompt(prefix, suffix)` (src/services/promptEngine.ts):
+assembles the FIM prompt with Qwen's `<|fim_prefix|>…<|fim_suffix|>…<|fim_middle|>`
+tokens. `completionOptions()` returns the DATA_FLOW §1 sampling (temperature 0.1,
+top_p 0.95, stop `["\n\n"]`). Pure and `vscode`-free.
+
+`cleanCompletion(raw, suffix)` (src/services/completionPostprocess.ts): defensive
+cleanup of small-model output — strips any echoed special tokens, unwraps stray
+markdown fences, and trims a tail that merely repeats the start of the suffix
+(so accepting a suggestion can't duplicate a bracket/line already after the
+cursor). Pure, returns "" when nothing usable remains.
+
+`OllamaService.complete()` (src/services/ollamaService.ts): now sends `raw: true`
+(so Ollama doesn't wrap the FIM tokens in the instruct chat template), accepts an
+`AbortSignal` + per-request timeout (abort/timeout resolve to "" rather than
+throwing), and an optional `keep_alive` to keep the model resident between
+requests.
+
+`CompletionProvider` (src/completionProvider.ts): the `InlineCompletionItemProvider`.
+600ms debounce that honours VS Code's `CancellationToken` (a newer keystroke
+supersedes the pending request); a single `AbortController` drives both
+supersession and the timeout; extracts 20 lines of prefix / 10 of suffix around
+the cursor → FIM prompt → `complete()` → post-process → `InlineCompletionItem`.
+Best-effort: any failure yields no suggestion, never a user-facing error.
+Per-request timing prints to the Output channel (`[completion] served in N ms`),
+and a status-bar spinner shows while a completion is generating.
+
+`extension.ts` registers the provider for a curated code-language allowlist
+(`COMPLETION_LANGUAGES`), ensures the configured autocomplete model is pulled
+(tier 3/4 use a model the earlier steps don't fetch), and pre-warms it so the
+first real completion isn't a cold load. A single `ConfigManager` is now shared
+across the chat panel, smoke test, and completion provider.
+
+**Autocomplete toggle:** a labelled on/off switch in the chat header (next to New
+Chat) flips inline completions live and persists via `inlineCompletionsEnabled`
+in config.json; the provider reads it on each request. **Chat typing indicator:**
+a three-dot animation now shows in the assistant bubble while awaiting the first
+token (replacing the bare cursor).
+
+113 Vitest tests (up from 96) cover FIM assembly, completion post-processing,
+the config default/back-fill, and the new protocol message.
+
+### Implementation Decisions
+
+- **Plain FIM, no filename** (`buildFIMPrompt(prefix, suffix)`): a live harness
+  showed a leading `<|file_sep|>` filename made the model emit stray markdown
+  fences; plain FIM is cleanest. PHASES.md's `(…, filename, language)` signature
+  was updated to match.
+- **`raw: true` is required** on `/api/generate`: without it Ollama applies the
+  instruct chat template and the model replies with prose instead of completing.
+- **Timeout 5s, not DATA_FLOW §1's 3s** (DECISIONS 013): a cold model load is
+  ~2.7s and a 3s budget aborted it silently; 5s covers cold loads while the warm
+  path (~0.3s) stays under the 2s DoD.
+- **`keep_alive` (30m) + activation pre-warm**: additions beyond §1 that target
+  the dominant cold-load latency, found via live timing.
+- **Shared `ConfigManager`**: so the chat-panel toggle reaches the provider
+  without a reload (previously chat and the provider held separate instances).
+
+### Judge Findings Addressed
+
+Approved 28/30, no Critical findings. Both Minor findings fixed before close:
+(1) the completion timeout was a 10s debug value vs §1's 3s → set to 5s and the
+deviation recorded as DECISIONS 013, with DATA_FLOW §1 annotated; (2) the
+`buildFIMPrompt` signature dropped the `filename`/`language` params PHASES.md
+listed → PHASES.md updated to the live-validated plain-FIM signature. Privacy was
+verified directly by the Judge (every `fetch` targets `127.0.0.1:11434`).
+
+### Known Issues
+
+Tracked as Linear issues (Linear is external to this repo — log there):
+- Provider-level logic (debounce, supersession, timing, status-bar ref-count) is
+  `vscode`-coupled and not unit-tested — verified by manual F5 per the DoD.
+- The completion timeout (5s) is a hardware-informed default; revisit with
+  real-world latency once more machines are tested.
+
+No critical issues.
+
+### Current State
+
+Pausing while typing in a supported language shows a ghost-text suggestion (Tab
+to accept, Esc to dismiss); rapid typing debounces and supersedes cleanly, and a
+status-bar spinner signals generation. The chat panel gained an Autocomplete
+on/off switch and a typing indicator. Not yet built: CMD+K editing (Phase 5) and
+`@codebase` + the onboarding UI (Phase 6).
+
+---
+
+## Phase 3 — Sidebar Chat
+**Status:** Approved by Judge Agent
+**Judge Score:** 27/30 (see JUDGE_SCORES.md)
+
+### What Was Built
+
+A working chat panel in the VS Code primary sidebar (FEATURES.md §3, UI_UX.md,
+DATA_FLOW.md §3). Streaming responses, the current file as automatic context,
+multi-turn session memory, Stop / New Chat, markdown + syntax highlighting, and
+inline error states. `@codebase` retrieval and the onboarding UI remain deferred
+to Phase 6.
+
+`ConversationManager` (src/services/conversationManager.ts): in-memory
+user/assistant transcript for the session — `addUser`/`addAssistant`,
+`getHistory` (defensive copy), `clear`. Not persisted to disk.
+
+`PromptEngine` (src/services/promptEngine.ts): `buildChatPrompt(userMessage,
+history, fileContext?)` assembles the Ollama message array — system prompt with
+the current file silently injected, the trimmed history, then the user message.
+Trims to the most recent `MAX_HISTORY_MESSAGES` (20 ≈ 10 exchanges). `chatOptions()`
+returns the DATA_FLOW §3 sampling options (temperature 0.7, top_p 0.95). Pure
+and `vscode`-free.
+
+`webviewProtocol.ts`: the typed postMessage contract between the webview and the
+extension host (`WebviewMessage` / `HostMessage` discriminated unions) plus
+`parseWebviewMessage`, a validating parser that rejects malformed input.
+
+`ChatViewProvider` (src/chatViewProvider.ts): the `WebviewViewProvider`. Gathers
+active-editor context (filename, language, contents if ≤500 lines, cursor +
+selection), assembles the prompt, streams `OllamaService.chat()` tokens to the
+webview, supports Stop via `AbortController`, and maps failures to FEATURES §3's
+inline error states (not running → Restart; model not ready → Retry; timeout;
+empty). Builds the webview HTML with a CSP and per-load nonce. Tracks the last
+active editor so file context survives the chat input being focused.
+
+Webview (src/webview/main.ts → bundled to media/webview.js; media/webview.css;
+media/icon.svg): plain HTML/CSS/vanilla JS (DECISIONS 009). Renders markdown
+with marked (raw HTML neutralised) and highlights code with highlight.js; live
+streaming cursor, per-code-block language label + copy button, clickable
+empty-state prompts, and inline (non-toast) error rows. All colours come from VS
+Code theme variables except the accent and the syntax-token palette. Bundled via
+a second esbuild entry (browser/IIFE).
+
+`OllamaService.chat()` gained an optional `AbortSignal` (Stop) and a
+time-to-first-token timeout (so a long-streaming reply isn't cut off mid-stream).
+`extension.ts` registers the provider with `retainContextWhenHidden` and forwards
+active-editor changes. 96 Vitest tests (ConversationManager, PromptEngine, the
+protocol parser).
+
+### Implementation Decisions
+
+- **Webview HTML is generated in the provider** (with the CSP nonce injected),
+  not a separate template file — simplest nonce handling.
+- **XSS defenses:** a CSP with `script-src 'nonce-…'` plus marked configured to
+  escape raw HTML; model output is rendered as markdown only.
+- **Separate `tsconfig.webview.json`** (lib DOM, `types: []`) so the browser
+  webview type-checks without colliding with `@types/node`'s fetch types; the
+  main config excludes `src/webview`.
+- **Timeout is time-to-first-token, not total** request time (a streaming chat
+  reply can legitimately run long); the surfaced message matches FEATURES §3.
+- **Syntax-token colours are hardcoded** in webview.css (documented) because VS
+  Code does not expose per-token editor theme colours to webviews.
+
+### Judge Findings Addressed
+
+Approved 27/30, no Critical findings. Two Minor findings fixed before close:
+(1) an immediate Stop (before any token) posted a spurious "No response received"
+error — it now ends quietly and the empty bubble is dropped; (2) "model not
+loaded" is now a distinct inline error with a working Retry action (a pre-send
+`hasModel()` check). The third Minor finding — token/context-window trimming
+(only message-count trimming exists today) — is deferred to Phase 6, when
+`@codebase` introduces the larger contexts that need it.
+
+### Known Issues
+
+Tracked as Linear issues (Linear is external to this repo — log there):
+- Token-based context-window trimming and file-content truncation are not yet
+  implemented (PromptEngine trims by message count only). Add before Phase 6.
+- A failed send (e.g. Ollama not running) shows the user bubble in the UI but
+  does not record it in `ConversationManager` history — a minor UI/state
+  divergence on the error path.
+
+No critical issues.
+
+### Current State
+
+Opening the LocalPilot sidebar shows a chat panel that streams model responses
+with the current file as automatic context, renders markdown with syntax-
+highlighted, copyable code blocks, supports Stop and New Chat, retains history
+across activity-bar switches, and surfaces failures inline. The webview is
+manual-tested (per TECH_STACK.md). Not yet built: inline completions (Phase 4),
+CMD+K editing (Phase 5), and `@codebase` + the onboarding UI (Phase 6).
+
+---
+
 ## Phase 2 — Codebase Indexing
 **Status:** Approved by Judge Agent
 **Judge Score:** 28/30 (see JUDGE_SCORES.md)

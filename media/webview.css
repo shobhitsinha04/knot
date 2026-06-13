@@ -60,7 +60,8 @@ body {
 
 .header-actions {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
 }
 
 .icon-btn {
@@ -89,6 +90,74 @@ body {
 .icon-btn svg {
   width: 16px;
   height: 16px;
+}
+
+/* ---- Autocomplete toggle switch (in the header) ---- */
+/* A labelled, styled checkbox that toggles inline completions; sits beside the
+   New Chat button. The visible label + tooltip make its purpose obvious. */
+.header-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.header-switch-label {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+}
+
+.switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 18px;
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.slider {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--vscode-input-background, rgba(128, 128, 128, 0.4));
+  border: 1px solid var(--vscode-input-border, transparent);
+  transition: background 120ms ease;
+}
+
+.slider::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--vscode-foreground);
+  transition: transform 120ms ease;
+}
+
+.switch input:checked + .slider {
+  background: var(--localpilot-accent);
+  border-color: var(--localpilot-accent);
+}
+
+.switch input:checked + .slider::before {
+  transform: translateX(14px);
+  background: #fff;
+}
+
+.switch input:focus-visible + .slider {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
 }
 
 /* ---- Conversation ---- */
@@ -255,6 +324,44 @@ body {
   }
 }
 
+/* Typing indicator: three bouncing dots shown while waiting for the first token */
+.typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vscode-descriptionForeground, var(--vscode-foreground));
+  opacity: 0.4;
+  animation: typing-bounce 1.2s infinite ease-in-out both;
+}
+
+.typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing-bounce {
+  0%,
+  70%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  35% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
 /* Inline errors (never red — system state, not user error) */
 .msg-error {
   display: flex;
@@ -272,6 +379,79 @@ body {
   color: var(--vscode-editorWarning-foreground);
   padding: 2px 8px;
   cursor: pointer;
+}
+
+/* ---- In-panel confirmation dialog (New Chat) ----
+   Shown inside the webview rather than as a VS Code system dialog, so the
+   confirmation stays within the chat UI. */
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.45);
+  animation: appear 120ms ease-in;
+}
+
+.confirm-dialog {
+  width: 100%;
+  max-width: 280px;
+  padding: 16px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  background: var(
+    --vscode-editorWidget-background,
+    var(--vscode-sideBar-background, var(--vscode-editor-background))
+  );
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.confirm-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.confirm-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--vscode-descriptionForeground);
+  margin-bottom: 16px;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirm-btn {
+  font: inherit;
+  font-size: 13px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: opacity 120ms ease;
+}
+
+.confirm-btn:hover {
+  opacity: 0.85;
+}
+
+.confirm-btn.primary {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.confirm-btn.secondary {
+  background: var(
+    --vscode-button-secondaryBackground,
+    rgba(128, 128, 128, 0.2)
+  );
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
 }
 
 /* ---- Input ---- */

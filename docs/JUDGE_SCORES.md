@@ -14,6 +14,28 @@ Dimensions: **Spec** (Spec Compliance) · **Arch** (Architecture) ·
 
 ---
 
+## Phase 4 — Inline Completions
+
+| Run | Date | Spec | Arch | Err | Priv | Qual | Test | Total | Status |
+|-----|------|------|------|-----|------|------|------|-------|--------|
+| 1 | 2026-06-12 | 4 | 5 | 5 | 5 | 5 | 4 | 28 | APPROVED |
+
+**Run 1 notes:** Approved cold at 28/30, no Critical findings. Judge verified
+Privacy directly (every `fetch` targets `127.0.0.1:11434`; only sanctioned
+external URL is the Ollama install script) and re-ran the gates (eslint/tsc
+clean, 113/113 tests). Two Minor findings, both **fixed before close**:
+(a) completion timeout was 10000ms vs DATA_FLOW §1's 3000ms — reconciled by
+lowering it to 5000ms and recording the deviation as DECISIONS 013 (3s aborts
+cold model loads ~2.7s; pre-warm + keep_alive keep the warm path well under the
+2s DoD); (b) `buildFIMPrompt` dropped the `filename`/`language` params that
+PHASES.md's signature listed — PHASES.md updated to match the live-validated
+plain-FIM signature (a `<|file_sep|>` filename made the model emit stray
+markdown fences). Observations (raw:true requirement, keep_alive/pre-warm,
+post-processing, vscode-coupled provider logic untested) accepted as documented,
+no action.
+
+---
+
 ## Phase 3 — Sidebar Chat
 
 | Run | Date | Spec | Arch | Err | Priv | Qual | Test | Total | Status |
