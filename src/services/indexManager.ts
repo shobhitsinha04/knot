@@ -155,30 +155,20 @@ export class IndexManager {
    * Files are processed in batches of {@link INDEX_FILE_BATCH_SIZE}; writes are
    * guarded by a cross-process lock so two VS Code windows can't corrupt the
    * index (TECH_STACK.md proper-lockfile).
+   *
+   * The existing table is dropped first so a full index is always a clean
+   * rebuild rather than an append. Without this, re-running indexWorkspace
+   * (e.g. on every activation) stacks a second full copy of every chunk on top
+   * of the persisted index, producing duplicate search hits.
    */
   async indexWorkspace(
     onProgress?: (progress: IndexProgress) => void,
   ): Promise<IndexStats> {
     const release = await this.acquireLock();
     try {
+      await this.dropTable();
       const files = await new FileWalker(this.logger).walk(this.workspacePath);
-      let chunkCount = 0;
-      let processed = 0;
-
-      for (let i = 0; i < files.length; i += INDEX_FILE_BATCH_SIZE) {
-        const batch = files.slice(i, i + INDEX_FILE_BATCH_SIZE);
-        // Embed the batch concurrently, then insert serially (LanceDB table
-        // creation/writes must not race).
-        const built = await Promise.all(batch.map((f) => this.buildRecords(f)));
-        for (const records of built) {
-          if (records.length > 0) {
-            await this.insert(records);
-            chunkCount += records.length;
-          }
-        }
-        processed += batch.length;
-        onProgress?.({ current: processed, total: files.length });
-      }
+      const chunkCount = await this.indexFiles(files, new Set(), onProgress);
 
       this.logger.info(
         `Indexed ${files.length} files into ${chunkCount} chunks ` +
@@ -186,6 +176,58 @@ export class IndexManager {
       );
       return {
         fileCount: files.length,
+        chunkCount,
+        workspaceHash: this.workspaceHash,
+      };
+    } finally {
+      await release();
+    }
+  }
+
+  /**
+   * Incrementally bring the index in line with what's on disk, using stored
+   * per-chunk mtimes as the baseline. Unlike the file watcher (which only sees
+   * changes while the extension is active), this catches edits, additions, and
+   * deletions that happened *between* activations — e.g. a git pull or branch
+   * switch with the window closed. Only the changed files are re-embedded, so
+   * an unchanged workspace costs a walk + a cheap mtime scan, not a full
+   * re-index. Falls back to indexing everything when no index exists yet.
+   */
+  async reconcile(
+    onProgress?: (progress: IndexProgress) => void,
+  ): Promise<IndexStats> {
+    const release = await this.acquireLock();
+    try {
+      const current = await this.scanWorkspaceMtimes();
+      const stored = await this.indexedFileMtimes();
+
+      // Files dropped from disk while we weren't watching → purge their chunks.
+      const removed = [...stored.keys()].filter((f) => !current.has(f));
+      for (const file of removed) await this.deleteChunksFor(file);
+
+      // New files (not in the index) and changed files (mtime differs in either
+      // direction — a checkout can move mtime backwards). Changed files must
+      // have their stale chunks deleted before re-insert; new files need no
+      // delete.
+      const toIndex: string[] = [];
+      const replace = new Set<string>();
+      for (const [file, mtime] of current) {
+        const prev = stored.get(file);
+        if (prev === undefined) {
+          toIndex.push(file);
+        } else if (prev !== mtime) {
+          toIndex.push(file);
+          replace.add(file);
+        }
+      }
+
+      const chunkCount = await this.indexFiles(toIndex, replace, onProgress);
+      this.logger.info(
+        `Reconciled workspace ${this.workspaceHash}: ${toIndex.length} ` +
+          `file(s) (re)indexed, ${removed.length} removed.`,
+      );
+      return {
+        fileCount: current.size,
         chunkCount,
         workspaceHash: this.workspaceHash,
       };
@@ -244,6 +286,74 @@ export class IndexManager {
   // --------------------------------------------------------------------------
   // Internals
   // --------------------------------------------------------------------------
+
+  /**
+   * Embed and insert `files` in batches, deleting any pre-existing chunks for a
+   * file listed in `replace` first (used for changed files; new files skip the
+   * delete). Embeds each batch concurrently, then writes serially — LanceDB
+   * table creation/writes must not race. Returns the number of chunks written.
+   */
+  private async indexFiles(
+    files: string[],
+    replace: Set<string>,
+    onProgress?: (progress: IndexProgress) => void,
+  ): Promise<number> {
+    let chunkCount = 0;
+    let processed = 0;
+    for (let i = 0; i < files.length; i += INDEX_FILE_BATCH_SIZE) {
+      const batch = files.slice(i, i + INDEX_FILE_BATCH_SIZE);
+      const built = await Promise.all(batch.map((f) => this.buildRecords(f)));
+      for (let j = 0; j < batch.length; j++) {
+        if (replace.has(batch[j])) await this.deleteChunksFor(batch[j]);
+        const records = built[j];
+        if (records.length > 0) {
+          await this.insert(records);
+          chunkCount += records.length;
+        }
+      }
+      processed += batch.length;
+      onProgress?.({ current: processed, total: files.length });
+    }
+    return chunkCount;
+  }
+
+  /**
+   * Walk the workspace and return a map of indexable file → current mtimeMs,
+   * applying the same regular-file and size guards as {@link buildRecords} so
+   * the reconcile diff matches what would actually be stored.
+   */
+  private async scanWorkspaceMtimes(): Promise<Map<string, number>> {
+    const files = await new FileWalker(this.logger).walk(this.workspacePath);
+    const current = new Map<string, number>();
+    for (const file of files) {
+      try {
+        const info = await stat(file);
+        if (info.isFile() && info.size <= MAX_INDEXABLE_FILE_BYTES) {
+          current.set(file, info.mtimeMs);
+        }
+      } catch (err) {
+        this.logger.warn(`Skipping ${file} during reconcile: ${String(err)}`);
+      }
+    }
+    return current;
+  }
+
+  /**
+   * Read the indexed files and their stored mtimes from LanceDB. All chunks of
+   * a file share one mtimeMs (set per file at index time), so the last row per
+   * filename wins. Empty when no index exists yet.
+   */
+  private async indexedFileMtimes(): Promise<Map<string, number>> {
+    const table = await this.openTable();
+    if (!table) return new Map();
+    const rows = (await table
+      .query()
+      .select(["filename", "mtimeMs"])
+      .toArray()) as { filename: string; mtimeMs: number }[];
+    const stored = new Map<string, number>();
+    for (const row of rows) stored.set(row.filename, row.mtimeMs);
+    return stored;
+  }
 
   /** Read, chunk, and embed one file into LanceDB records (no write). */
   private async buildRecords(file: string): Promise<ChunkRecord[]> {
@@ -321,6 +431,19 @@ export class IndexManager {
   private async deleteChunksFor(filePath: string): Promise<void> {
     const table = await this.openTable();
     if (table) await table.delete(`filename = ${sqlString(filePath)}`);
+  }
+
+  /**
+   * Drop the chunks table if it exists, so the next insert recreates it clean.
+   * Resets the cached handle to avoid pointing at a dropped table. No-op when
+   * the table doesn't exist yet (first index).
+   */
+  private async dropTable(): Promise<void> {
+    const db = await this.connect();
+    if ((await db.tableNames()).includes(TABLE_NAME)) {
+      await db.dropTable(TABLE_NAME);
+    }
+    this.table = undefined;
   }
 
   private async connect(): Promise<lancedb.Connection> {

@@ -294,14 +294,17 @@ async function runIndexingSmokeTest(
     logger,
   });
 
-  logger.info(`Indexing workspace ${folder.uri.fsPath}...`);
-  const stats = await indexManager.indexWorkspace((progress) => {
+  logger.info(`Reconciling index for workspace ${folder.uri.fsPath}...`);
+  // Reconcile (not a full re-index): picks up edits/additions/deletions made
+  // while the extension was inactive, and re-embeds only the changed files.
+  const stats = await indexManager.reconcile((progress) => {
     if (progress.current === progress.total || progress.current % 10 === 0) {
       logger.info(`  indexed ${progress.current}/${progress.total} files`);
     }
   });
   logger.info(
-    `Indexed ${stats.fileCount} files into ${stats.chunkCount} chunks.`,
+    `Index reconciled: ${stats.fileCount} files on disk, ` +
+      `${stats.chunkCount} chunks (re)written.`,
   );
 
   // Record index state in config.json (workspaceIndexes keyed by hash).
