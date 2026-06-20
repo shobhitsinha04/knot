@@ -258,6 +258,10 @@ export class IndexManager {
       await this.deleteChunksFor(filePath);
       const records = await this.buildRecords(filePath);
       if (records.length > 0) await this.insert(records);
+      this.logger.info(
+        `Index updated: ${path.relative(this.workspacePath, filePath)} ` +
+          `(${records.length} chunk${records.length === 1 ? "" : "s"}).`,
+      );
     } finally {
       await release();
     }
@@ -268,6 +272,9 @@ export class IndexManager {
     const release = await this.acquireLock();
     try {
       await this.deleteChunksFor(filePath);
+      this.logger.info(
+        `Index entry removed: ${path.relative(this.workspacePath, filePath)}.`,
+      );
     } finally {
       await release();
     }

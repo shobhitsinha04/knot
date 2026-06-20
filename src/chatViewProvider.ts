@@ -184,6 +184,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       filename: vscode.workspace.asRelativePath(c.filename),
     }));
     const files = [...new Set(relChunks.map((c) => c.filename))];
+    this.logger.info(
+      `@codebase "${query}" → ${chunks.length} chunk(s) from ` +
+        `${files.length} file(s): ${files.join(", ") || "(none)"}`,
+    );
     this.post({ type: "retrievalComplete", files });
 
     return this.prompt.buildCodebaseChatPrompt(
