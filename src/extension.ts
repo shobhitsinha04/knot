@@ -528,9 +528,16 @@ async function registerCompletionProvider(
 }
 
 /**
- * Wire VS Code's file watcher to incremental index updates (DATA_FLOW.md §6).
- * Registered once per session; lives here (not in IndexManager) so the service
- * stays free of the `vscode` API.
+ * Wire incremental index updates (DATA_FLOW.md §6). Registered once per session;
+ * lives here (not in IndexManager) so the service stays free of the `vscode` API.
+ *
+ * Content edits are driven by `onDidSaveTextDocument` rather than the file
+ * watcher's `onDidChange`: the watcher is subject to `files.watcherExclude` and
+ * OS-level coalescing, so editor saves (including autosave) can be missed —
+ * which left @codebase querying a stale index. The save event fires reliably for
+ * every manual save and autosave. The FileSystemWatcher still covers file
+ * creation and deletion, plus external (non-editor) changes; anything missed
+ * in-session is reconciled on the next activation (mtime diff).
  */
 function registerIndexWatcher(
   context: vscode.ExtensionContext,
@@ -540,7 +547,6 @@ function registerIndexWatcher(
   if (indexWatcherRegistered) return;
   indexWatcherRegistered = true;
 
-  const watcher = vscode.workspace.createFileSystemWatcher("**/*");
   const update = (uri: vscode.Uri): void => {
     void contextService
       .updateFile(uri.fsPath)
@@ -548,15 +554,26 @@ function registerIndexWatcher(
         logger.warn(`Index update failed for ${uri.fsPath}: ${String(err)}`),
       );
   };
-  watcher.onDidCreate(update);
-  watcher.onDidChange(update);
-  watcher.onDidDelete((uri) => {
+  const remove = (uri: vscode.Uri): void => {
     void contextService
       .deleteFile(uri.fsPath)
       .catch((err) =>
         logger.warn(`Index delete failed for ${uri.fsPath}: ${String(err)}`),
       );
-  });
-  context.subscriptions.push(watcher);
-  logger.info("File watcher registered for incremental index updates.");
+  };
+
+  const watcher = vscode.workspace.createFileSystemWatcher("**/*");
+  watcher.onDidCreate(update);
+  watcher.onDidChange(update); // best-effort for external (non-editor) edits
+  watcher.onDidDelete(remove);
+
+  context.subscriptions.push(
+    watcher,
+    // Reliable signal for editor saves (manual + autosave). Only file-scheme
+    // documents are indexable; updateFile re-checks skip rules.
+    vscode.workspace.onDidSaveTextDocument((doc) => {
+      if (doc.uri.scheme === "file") update(doc.uri);
+    }),
+  );
+  logger.info("Index watcher registered (save + create/change/delete events).");
 }
