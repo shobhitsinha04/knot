@@ -201,6 +201,16 @@ for syntax highlighting.
 **Why:** Syntax highlighting inside code blocks in the chat panel.
 Loaded in the webview only. Supports all languages we care about.
 
+### KaTeX
+**Package:** `katex` (added Phase 6 WP1, F5 follow-up — approved by the user)
+**Why:** Render mathematical formulas in chat / @codebase answers. Small models
+emit LaTeX for formulas (e.g. reading-time estimates); without a math renderer
+they showed as raw source like `[ \text{Total} = ... ]`. KaTeX renders `$…$`
+(inline) and `$$…$$` (block) math, wired into Marked via two small custom
+extensions. Loaded in the webview only; `katex.min.css` + the font files are
+copied into `media/` by esbuild at build time (git-ignored build artifacts).
+The chat/@codebase system prompts instruct the model to use `$…$` / `$$…$$`.
+
 ---
 
 ## Utilities

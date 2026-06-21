@@ -15,9 +15,30 @@
 // same approach as Continue.dev.
 
 const esbuild = require("esbuild");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const production = process.argv.includes("--production");
 const watch = process.argv.includes("--watch");
+
+/**
+ * Copy KaTeX's stylesheet and fonts into media/ so the webview can render math
+ * (chat / @codebase answers use $…$ and $$…$$). katex.min.css references the
+ * fonts relatively as `fonts/KaTeX_*`, so the layout media/katex.min.css +
+ * media/fonts/ must mirror node_modules/katex/dist. These are build artifacts
+ * (git-ignored), regenerated on every build.
+ */
+function copyKatexAssets() {
+  const dist = path.join(__dirname, "node_modules", "katex", "dist");
+  const mediaDir = path.join(__dirname, "media");
+  fs.copyFileSync(
+    path.join(dist, "katex.min.css"),
+    path.join(mediaDir, "katex.min.css"),
+  );
+  fs.cpSync(path.join(dist, "fonts"), path.join(mediaDir, "fonts"), {
+    recursive: true,
+  });
+}
 
 /** The extension host bundle (Node/CommonJS). */
 /** @type {import('esbuild').BuildOptions} */
@@ -54,6 +75,7 @@ const webviewOptions = {
 };
 
 async function main() {
+  copyKatexAssets();
   if (watch) {
     const ctxExt = await esbuild.context(extensionOptions);
     const ctxWeb = await esbuild.context(webviewOptions);

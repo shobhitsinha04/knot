@@ -273,6 +273,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     const styleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, "media", "webview.css"),
     );
+    const katexCssUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, "media", "katex.min.css"),
+    );
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, "media", "webview.js"),
     );
@@ -290,6 +293,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="${katexCssUri}" rel="stylesheet" />
   <link href="${styleUri}" rel="stylesheet" />
   <title>LocalPilot</title>
 </head>

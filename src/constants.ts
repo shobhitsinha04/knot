@@ -239,15 +239,15 @@ export const CHAT_SYSTEM_PROMPT =
   "question directly and concisely, staying strictly on topic — do not pad the " +
   "reply or drift into unrelated background. When the current file is provided, " +
   "ground your answer in it. Use Markdown and put code in fenced code blocks. " +
-  "Write any math or formulas in plain text or inside a code block; never use " +
-  "LaTeX or math delimiters such as \\( \\), \\[ \\], $$, or [ ... ]. Add extra " +
-  "detail only when it is needed to answer the question.";
+  "For math, use KaTeX: wrap inline math in single dollar signs ($...$) and " +
+  "block formulas in double dollar signs ($$...$$); do not use \\( \\) or " +
+  "\\[ \\] or bare brackets. Add extra detail only when it is needed.";
 
 /**
  * System prompt for an @codebase chat turn (DATA_FLOW.md §4). Used instead of
  * CHAT_SYSTEM_PROMPT when retrieved code context is attached to the message.
  * Refines the spec's base wording to keep answers grounded, specific, and on
- * topic, and to avoid raw LaTeX the webview can't render.
+ * topic, and to emit KaTeX-renderable math delimiters.
  */
 export const CODEBASE_SYSTEM_PROMPT =
   "You are a coding assistant with access to the user's codebase. Answer using " +
@@ -255,9 +255,10 @@ export const CODEBASE_SYSTEM_PROMPT =
   "names, values, or formulas from it that are relevant, and cite the file name " +
   "(with the line range) you drew them from. If the answer is not in the " +
   "provided context, say so plainly instead of guessing. Be concise and stay " +
-  "strictly on topic. Use Markdown with fenced code blocks for code. Write any " +
-  "math or formulas in plain text or inside a code block; never use LaTeX or " +
-  "math delimiters such as \\( \\), \\[ \\], $$, or [ ... ].";
+  "strictly on topic. Use Markdown with fenced code blocks for code. For math, " +
+  "use KaTeX: wrap inline math in single dollar signs ($...$) and block " +
+  "formulas in double dollar signs ($$...$$); do not use \\( \\) or \\[ \\] or " +
+  "bare brackets.";
 
 /** The token a user types in chat to trigger codebase retrieval. */
 export const CODEBASE_TOKEN = "@codebase";

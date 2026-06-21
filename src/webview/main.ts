@@ -7,7 +7,8 @@
 // not expose to webviews.
 
 import hljs from "highlight.js/lib/common";
-import { Marked } from "marked";
+import katex from "katex";
+import { Marked, type TokenizerAndRendererExtension } from "marked";
 
 import type {
   ErrorAction,
@@ -41,6 +42,53 @@ marked.use({
       escapeHtml(typeof token === "string" ? token : token.text),
   },
 });
+
+// KaTeX math rendering. The chat/@codebase prompts ask the model to write math
+// as $…$ (inline) and $$…$$ (display); these extensions turn that into rendered
+// HTML (katex.min.css + fonts are linked by the webview). throwOnError:false so
+// a malformed expression falls back to its source text instead of breaking the
+// whole message.
+function renderMath(text: string, displayMode: boolean): string {
+  try {
+    return katex.renderToString(text, { displayMode, throwOnError: false });
+  } catch {
+    return escapeHtml(text);
+  }
+}
+
+const blockMath: TokenizerAndRendererExtension = {
+  name: "blockMath",
+  level: "block",
+  start: (src) => {
+    const i = src.indexOf("$$");
+    return i < 0 ? undefined : i;
+  },
+  tokenizer(src) {
+    const m = /^\$\$([\s\S]+?)\$\$/.exec(src);
+    if (!m) return undefined;
+    return { type: "blockMath", raw: m[0], text: m[1].trim() };
+  },
+  renderer: (token) => renderMath(String(token.text), true) + "\n",
+};
+
+const inlineMath: TokenizerAndRendererExtension = {
+  name: "inlineMath",
+  level: "inline",
+  start: (src) => {
+    const i = src.indexOf("$");
+    return i < 0 ? undefined : i;
+  },
+  tokenizer(src) {
+    // Require non-space just inside the delimiters so prose like "$5 and $10"
+    // is left alone; only $…$ tight against content is treated as math.
+    const m = /^\$(?!\s)([^$\n]+?)(?<!\s)\$/.exec(src);
+    if (!m) return undefined;
+    return { type: "inlineMath", raw: m[0], text: m[1].trim() };
+  },
+  renderer: (token) => renderMath(String(token.text), false),
+};
+
+marked.use({ extensions: [blockMath, inlineMath] });
 
 function renderMarkdown(source: string): string {
   return marked.parse(source) as string;
