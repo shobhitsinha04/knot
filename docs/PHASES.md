@@ -317,18 +317,42 @@ and logged as Linear issues for post-beta prioritisation.
 
 ---
 
+## Phase 8 — Public Marketplace Release (post-beta)
+**Goal:** Publish LocalPilot to the VS Code Marketplace once the private beta
+(Phase 7) is healthy. Gated on beta feedback — only start after Phase 7's DoD is
+met and critical beta bugs are resolved.
+
+### Tasks
+- [ ] Triage and fix the beta feedback logged in Phase 7
+- [ ] Create a Marketplace publisher account + Personal Access Token (`vsce`)
+- [ ] Listing assets: polished README, icon, LICENSE, categories, keywords,
+      gallery banner, screenshots/GIFs
+- [ ] Verify the published package contains the platform-specific LanceDB native
+      binary and the bundled KaTeX assets (not excluded by `.vscodeignore`)
+- [ ] Confirm the macOS / Apple-Silicon-only support story is clear in the
+      listing (v1 scope)
+- [ ] `vsce publish` and verify a clean install from the Marketplace
+- [ ] Set up a release/versioning + changelog process for updates
+
+### Definition of Done
+LocalPilot is live on the VS Code Marketplace and installs cleanly from a fresh
+machine via the Marketplace. A versioning + update process is in place.
+
+---
+
 ## Phase Summary
 
-| Phase | Focus                        |
-|-------|------------------------------|
-| 0     | Project setup                |
-| 1     | Ollama + hardware detection  |
-| 2     | Codebase indexing            |
-| 3     | Sidebar chat                 |
-| 4     | Inline completions           |
-| 5     | CMD+K inline editing         |
-| 6     | @codebase + onboarding UI    |
-| 7     | Polish + private beta        |
+| Phase | Focus                          |
+|-------|--------------------------------|
+| 0     | Project setup                  |
+| 1     | Ollama + hardware detection    |
+| 2     | Codebase indexing              |
+| 3     | Sidebar chat                   |
+| 4     | Inline completions             |
+| 5     | CMD+K inline editing           |
+| 6     | @codebase + onboarding UI      |
+| 7     | Polish + private beta          |
+| 8     | Public Marketplace release     |
 
 ---
 
