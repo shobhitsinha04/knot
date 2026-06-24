@@ -70,6 +70,10 @@
       {
         "command": "localpilot.rebuildIndex",
         "title": "LocalPilot: Rebuild Index"
+      },
+      {
+        "command": "localpilot.resetSetup",
+        "title": "LocalPilot: Reset and Re-run Setup"
       }
     ],
     "keybindings": [

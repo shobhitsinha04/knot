@@ -84,6 +84,16 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("localpilot.rebuildIndex", () => {
       void runForceRebuild(logger, channel, config, contextService);
     }),
+    vscode.commands.registerCommand("localpilot.resetSetup", () => {
+      void runResetSetup(
+        context,
+        logger,
+        channel,
+        ollama,
+        config,
+        contextService,
+      );
+    }),
   );
 
   // Phase 3 — register the sidebar chat panel (FEATURES.md §3).
@@ -127,7 +137,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   // Fire-and-forget so a long model pull never blocks VS Code activation.
-  void runSmokeTest(context, logger, channel, ollama, config, contextService);
+  void runActivation(context, logger, channel, ollama, config, contextService);
 }
 
 export function deactivate(): void {
@@ -280,6 +290,13 @@ async function runSmokeTest(
       models.embedding,
       contextService,
     );
+
+    // Setup finished — mark onboarding complete so later activations take the
+    // silent ensure-ready path and gated features stay enabled. (The webview
+    // onboarding UI that drives this interactively lands in WP2 PR B; for now
+    // setup runs headlessly here, exactly as before.)
+    await config.update({ onboardingComplete: true });
+    logger.info("LocalPilot setup complete.");
   } catch (err) {
     logger.error("Phase 1 smoke test failed", err);
     void vscode.window.showErrorMessage(
@@ -288,6 +305,113 @@ async function runSmokeTest(
   } finally {
     smokeTestInFlight = false;
   }
+}
+
+/**
+ * Activation router (WP2 PR A). Decides what runs on each activation based on
+ * the persisted onboarding state:
+ *  - not onboarded → run the full setup (currently headless via runSmokeTest;
+ *    the interactive webview onboarding lands in WP2 PR B), which marks
+ *    onboardingComplete on success.
+ *  - already onboarded → a silent ensure-ready: start Ollama if needed, register
+ *    the (gated) completion provider, reconcile the index, and watch for edits —
+ *    no model-selection chatter, no "say hello" test, minimal Output noise.
+ */
+async function runActivation(
+  context: vscode.ExtensionContext,
+  logger: Logger,
+  channel: vscode.OutputChannel,
+  ollama: OllamaService,
+  config: ConfigManager,
+  contextService: ContextService | undefined,
+): Promise<void> {
+  await config.load();
+  if (config.get().onboardingComplete) {
+    await ensureReady(context, logger, ollama, config, contextService);
+  } else {
+    await runSmokeTest(
+      context,
+      logger,
+      channel,
+      ollama,
+      config,
+      contextService,
+    );
+  }
+}
+
+/**
+ * Silent startup path for an already-onboarded workspace. Brings the runtime up
+ * without re-running setup: ensure the daemon is live, register inline
+ * completions (the model is already pulled), and reconcile + watch the index.
+ * Never throws — failures are logged; a broken daemon surfaces when the user
+ * next chats. Features stay gated behind onboardingComplete, which is true here.
+ */
+async function ensureReady(
+  context: vscode.ExtensionContext,
+  logger: Logger,
+  ollama: OllamaService,
+  config: ConfigManager,
+  contextService: ContextService | undefined,
+): Promise<void> {
+  logger.info("LocalPilot ready — onboarding already complete.");
+  try {
+    if (!(await ollama.isRunning())) {
+      logger.info("Starting Ollama daemon...");
+      await ollama.start();
+    }
+
+    // Inline completions (Phase 4). Gated here by being onboarded; the model is
+    // already present so registerCompletionProvider's pull is a fast no-op.
+    try {
+      await registerCompletionProvider(context, logger, config, ollama);
+    } catch (err) {
+      logger.error("Failed to register inline completion provider", err);
+    }
+
+    // Catch up the index on anything changed while the window was closed, then
+    // watch for live edits. No embedding-model pull or sample query (that noise
+    // belongs to first-time setup), just the reconcile + watcher.
+    if (contextService) {
+      const stats = await contextService.reconcile((progress) => {
+        if (
+          progress.current === progress.total ||
+          progress.current % 20 === 0
+        ) {
+          logger.info(
+            `  reconciled ${progress.current}/${progress.total} files`,
+          );
+        }
+      });
+      await recordIndexState(config, stats);
+      registerIndexWatcher(context, logger, contextService);
+      logger.info(
+        `Index reconciled: ${stats.fileCount} files, ` +
+          `${stats.chunkCount} chunks (re)written.`,
+      );
+    }
+  } catch (err) {
+    logger.error("ensureReady failed", err);
+  }
+}
+
+/**
+ * "Reset and Re-run Setup" command (ONBOARDING_FLOW.md). Clears the onboarding
+ * state, then re-runs setup from scratch.
+ */
+async function runResetSetup(
+  context: vscode.ExtensionContext,
+  logger: Logger,
+  channel: vscode.OutputChannel,
+  ollama: OllamaService,
+  config: ConfigManager,
+  contextService: ContextService | undefined,
+): Promise<void> {
+  await config.load();
+  await config.update({ onboardingComplete: false, onboardingStep: 0 });
+  logger.info("Onboarding state reset; re-running setup.");
+  void vscode.window.showInformationMessage("LocalPilot: re-running setup…");
+  await runSmokeTest(context, logger, channel, ollama, config, contextService);
 }
 
 /**

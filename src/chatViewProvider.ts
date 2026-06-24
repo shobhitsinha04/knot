@@ -155,6 +155,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     query: string,
     fileContext: ReturnType<NonNullable<ContextService["gatherFileContext"]>>,
   ): Promise<ChatMessage[] | null> {
+    if (!this.config.get().onboardingComplete) {
+      this.postError("Finish LocalPilot setup before using @codebase.");
+      return null;
+    }
     if (!this.context) {
       this.postError("Open a workspace folder to search your codebase.");
       return null;
