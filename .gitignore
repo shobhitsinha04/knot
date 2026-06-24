@@ -7,6 +7,9 @@ dist/
 # Generated webview bundle (built from src/webview by esbuild)
 media/webview.js
 media/webview.js.map
+# KaTeX assets copied into media/ by esbuild (from node_modules/katex/dist)
+media/katex.min.css
+media/fonts/
 
 # Logs
 *.log

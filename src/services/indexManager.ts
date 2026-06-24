@@ -250,26 +250,47 @@ export class IndexManager {
     return rerank(rows);
   }
 
-  /** Re-index a single file: drop its old chunks, then re-chunk and insert. */
-  async updateFile(filePath: string): Promise<void> {
-    if (!this.isIndexablePath(filePath)) return;
+  /**
+   * Re-index a single file: drop its old chunks, then re-chunk and insert.
+   * `source` is a label for the trigger (e.g. "save", "fs-change") echoed in the
+   * log so overlapping triggers are distinguishable.
+   */
+  async updateFile(filePath: string, source = "watcher"): Promise<void> {
+    const rel = path.relative(this.workspacePath, filePath);
+    if (!this.isIndexablePath(filePath)) {
+      // Only note skips for explicit saves — watcher events fire for many
+      // non-source files and would flood the log.
+      if (source === "save") {
+        this.logger.info(`[index] ${source}: skipped ${rel} (not indexable)`);
+      }
+      return;
+    }
+    const started = Date.now();
     const release = await this.acquireLock();
     try {
-      this.logger.info("updateFile triggered");
       await this.deleteChunksFor(filePath);
       const records = await this.buildRecords(filePath);
       if (records.length > 0) await this.insert(records);
+      const span = records.length
+        ? ` lines ${records[0].startLine}-${records[records.length - 1].endLine},`
+        : "";
+      this.logger.info(
+        `[index] ${source}: reindexed ${rel} — ${records.length} ` +
+          `chunk${records.length === 1 ? "" : "s"},${span} ` +
+          `${Date.now() - started}ms`,
+      );
     } finally {
       await release();
     }
   }
 
   /** Remove all chunks belonging to a deleted file. */
-  async deleteFile(filePath: string): Promise<void> {
-    this.logger.info("deleteFile triggered");
+  async deleteFile(filePath: string, source = "watcher"): Promise<void> {
+    const rel = path.relative(this.workspacePath, filePath);
     const release = await this.acquireLock();
     try {
       await this.deleteChunksFor(filePath);
+      this.logger.info(`[index] ${source}: removed ${rel} from the index`);
     } finally {
       await release();
     }
@@ -451,7 +472,15 @@ export class IndexManager {
   private async connect(): Promise<lancedb.Connection> {
     if (!this.db) {
       await mkdir(this.indexDir, { recursive: true });
-      this.db = await lancedb.connect(this.indexDir);
+      // readConsistencyInterval: 0 → every read checks for the latest committed
+      // version before serving. Without it, a table handle never sees writes
+      // made through another handle/process (LanceDB's default for perf), so an
+      // incremental updateFile would not reach a chat search opened earlier — or
+      // a second VS Code window sharing this index — and @codebase answered from
+      // a stale snapshot. Strong consistency is cheap for a local on-disk index.
+      this.db = await lancedb.connect(this.indexDir, {
+        readConsistencyInterval: 0,
+      });
     }
     return this.db;
   }

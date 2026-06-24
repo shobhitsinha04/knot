@@ -25,6 +25,7 @@ export class ConfigManager {
   static defaults(): LocalPilotConfig {
     return {
       onboardingComplete: false,
+      onboardingStep: 0,
       tier: null,
       chatModel: null,
       autocompleteModel: null,

@@ -70,6 +70,10 @@
       {
         "command": "localpilot.rebuildIndex",
         "title": "LocalPilot: Rebuild Index"
+      },
+      {
+        "command": "localpilot.resetSetup",
+        "title": "LocalPilot: Reset and Re-run Setup"
       }
     ],
     "keybindings": [
@@ -103,6 +107,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
+    "@types/katex": "^0.16.8",
     "@types/node": "^18.19.0",
     "@types/proper-lockfile": "^4.1.4",
     "@types/vscode": "^1.85.0",
@@ -118,6 +123,7 @@
     "@lancedb/lancedb": "^0.30.0",
     "highlight.js": "^11.11.1",
     "ignore": "^7.0.5",
+    "katex": "^0.16.47",
     "marked": "^18.0.5",
     "proper-lockfile": "^4.1.2"
   }

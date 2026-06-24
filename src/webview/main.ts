@@ -7,11 +7,13 @@
 // not expose to webviews.
 
 import hljs from "highlight.js/lib/common";
-import { Marked } from "marked";
+import katex from "katex";
+import { Marked, type TokenizerAndRendererExtension } from "marked";
 
 import type {
   ErrorAction,
   HostMessage,
+  OnboardingView,
   WebviewMessage,
 } from "../webviewProtocol";
 
@@ -42,6 +44,53 @@ marked.use({
   },
 });
 
+// KaTeX math rendering. The chat/@codebase prompts ask the model to write math
+// as $…$ (inline) and $$…$$ (display); these extensions turn that into rendered
+// HTML (katex.min.css + fonts are linked by the webview). throwOnError:false so
+// a malformed expression falls back to its source text instead of breaking the
+// whole message.
+function renderMath(text: string, displayMode: boolean): string {
+  try {
+    return katex.renderToString(text, { displayMode, throwOnError: false });
+  } catch {
+    return escapeHtml(text);
+  }
+}
+
+const blockMath: TokenizerAndRendererExtension = {
+  name: "blockMath",
+  level: "block",
+  start: (src) => {
+    const i = src.indexOf("$$");
+    return i < 0 ? undefined : i;
+  },
+  tokenizer(src) {
+    const m = /^\$\$([\s\S]+?)\$\$/.exec(src);
+    if (!m) return undefined;
+    return { type: "blockMath", raw: m[0], text: m[1].trim() };
+  },
+  renderer: (token) => renderMath(String(token.text), true) + "\n",
+};
+
+const inlineMath: TokenizerAndRendererExtension = {
+  name: "inlineMath",
+  level: "inline",
+  start: (src) => {
+    const i = src.indexOf("$");
+    return i < 0 ? undefined : i;
+  },
+  tokenizer(src) {
+    // Require non-space just inside the delimiters so prose like "$5 and $10"
+    // is left alone; only $…$ tight against content is treated as math.
+    const m = /^\$(?!\s)([^$\n]+?)(?<!\s)\$/.exec(src);
+    if (!m) return undefined;
+    return { type: "inlineMath", raw: m[0], text: m[1].trim() };
+  },
+  renderer: (token) => renderMath(String(token.text), false),
+};
+
+marked.use({ extensions: [blockMath, inlineMath] });
+
 function renderMarkdown(source: string): string {
   return marked.parse(source) as string;
 }
@@ -56,6 +105,15 @@ const modelName = document.getElementById("model-name") as HTMLElement;
 const autocompleteToggle = document.getElementById(
   "toggle-autocomplete",
 ) as HTMLInputElement;
+
+// Onboarding (WP2)
+const obTitle = document.getElementById("ob-title") as HTMLElement;
+const obDetail = document.getElementById("ob-detail") as HTMLElement;
+const obSpinner = document.getElementById("ob-spinner") as HTMLElement;
+const obProgress = document.getElementById("ob-progress") as HTMLElement;
+const obBarFill = document.getElementById("ob-bar-fill") as HTMLElement;
+const obEta = document.getElementById("ob-eta") as HTMLElement;
+const obAction = document.getElementById("ob-action") as HTMLButtonElement;
 
 // --- state ------------------------------------------------------------------
 let generating = false;
@@ -80,6 +138,45 @@ function scrollToBottom(force: boolean): void {
 
 function hideEmptyState(): void {
   emptyState.style.display = "none";
+}
+
+// --- @codebase retrieval status --------------------------------------------
+let retrievalEl: HTMLElement | null = null;
+
+/** Show "Searching codebase…" while the host runs the RAG retrieval. */
+function showRetrievalStatus(): void {
+  hideEmptyState();
+  retrievalEl = document.createElement("div");
+  retrievalEl.className = "retrieval";
+  retrievalEl.innerHTML =
+    '<span class="retrieval-spinner" aria-hidden="true"></span>' +
+    '<span class="retrieval-text">Searching codebase…</span>';
+  conversation.appendChild(retrievalEl);
+  scrollToBottom(true);
+}
+
+/** Remove any retrieval status/chips from a previous turn. */
+function clearRetrieval(): void {
+  conversation.querySelectorAll(".retrieval").forEach((el) => el.remove());
+  retrievalEl = null;
+}
+
+/** Swap the status for the retrieved-file chips (or a "none found" note). */
+function showRetrievalResult(files: string[]): void {
+  if (!retrievalEl) return;
+  if (files.length === 0) {
+    retrievalEl.innerHTML =
+      '<span class="retrieval-text">No relevant files found.</span>';
+  } else {
+    const chips = files
+      .map((f) => `<span class="file-chip">${escapeHtml(f)}</span>`)
+      .join("");
+    retrievalEl.innerHTML =
+      '<span class="retrieval-text">Searched codebase</span>' +
+      `<span class="file-chips">${chips}</span>`;
+  }
+  // Detach so the chips stay in the transcript above the streamed answer.
+  retrievalEl = null;
 }
 
 // --- message bubbles --------------------------------------------------------
@@ -219,6 +316,8 @@ function autoGrow(): void {
 function submit(): void {
   const text = input.value.trim();
   if (generating || text.length === 0) return;
+  // Clear the previous turn's codebase chips so only the latest set shows.
+  clearRetrieval();
   addUserBubble(text);
   post({ type: "sendMessage", text });
   input.value = "";
@@ -264,8 +363,9 @@ newChatBtn.addEventListener("click", () => {
 function clearChat(): void {
   post({ type: "newChat" });
   conversation
-    .querySelectorAll(".msg, .msg-error")
+    .querySelectorAll(".msg, .msg-error, .retrieval")
     .forEach((el) => el.remove());
+  retrievalEl = null;
   emptyState.style.display = "";
   assistantEl = null;
   assistantBuffer = "";
@@ -346,13 +446,57 @@ emptyState.querySelectorAll("[data-try]").forEach((el) => {
   });
 });
 
+// --- onboarding (WP2) -------------------------------------------------------
+function renderOnboarding(v: OnboardingView): void {
+  document.body.classList.add("onboarding-active");
+  obTitle.textContent = v.title;
+  obDetail.textContent = v.detail;
+
+  const isProgress = v.mode === "progress";
+  obProgress.hidden = !isProgress;
+  if (isProgress) {
+    const pct = Math.max(0, Math.min(100, v.percent ?? 0));
+    obBarFill.style.width = `${pct}%`;
+    obEta.textContent = v.eta ?? "";
+  }
+
+  obSpinner.hidden = !(v.mode === "info" || isProgress);
+
+  if (v.actionId && v.actionLabel) {
+    obAction.hidden = false;
+    obAction.disabled = false;
+    obAction.textContent = v.actionLabel;
+    obAction.dataset.action = v.actionId;
+  } else {
+    obAction.hidden = true;
+  }
+}
+
+obAction.addEventListener("click", () => {
+  const id = obAction.dataset.action;
+  if (!id) return;
+  obAction.disabled = true; // prevent double-trigger on slow steps
+  post({ type: "onboardingAction", id } as WebviewMessage);
+});
+
 // --- host → webview ---------------------------------------------------------
 window.addEventListener("message", (event: MessageEvent<HostMessage>) => {
   const msg = event.data;
   switch (msg.type) {
     case "init":
+      // Leaving onboarding (or never in it) → show the chat UI.
+      document.body.classList.remove("onboarding-active");
       modelName.textContent = msg.model;
       autocompleteToggle.checked = msg.autocompleteEnabled;
+      break;
+    case "onboarding":
+      renderOnboarding(msg.view);
+      break;
+    case "retrievalStart":
+      showRetrievalStatus();
+      break;
+    case "retrievalComplete":
+      showRetrievalResult(msg.files);
       break;
     case "streamStart":
       setGenerating(true);

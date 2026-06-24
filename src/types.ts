@@ -51,6 +51,12 @@ export interface WorkspaceIndexState {
 /** Persisted config.json schema (PHASES.md Phase 1). */
 export interface LocalPilotConfig {
   onboardingComplete: boolean;
+  /**
+   * Last completed onboarding step (0-based), used to resume an interrupted
+   * setup (PHASES.md Phase 6 / ONBOARDING_FLOW.md). 0 when not started; the
+   * resume logic that consumes it lands with the onboarding UI (WP2 PR B).
+   */
+  onboardingStep: number;
   tier: Tier | null;
   chatModel: string | null;
   autocompleteModel: string | null;

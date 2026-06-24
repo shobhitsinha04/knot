@@ -1,15 +1,21 @@
 import * as vscode from "vscode";
 
-import { MAX_CONTEXT_FILE_LINES } from "./constants";
+import type { ContextService } from "./contextService";
+import type { OnboardingController } from "./onboardingController";
 import { ConversationManager } from "./services/conversationManager";
 import { OllamaError, type OllamaService } from "./services/ollamaService";
-import { PromptEngine } from "./services/promptEngine";
+import {
+  formatCodebaseContext,
+  parseCodebaseQuery,
+  PromptEngine,
+} from "./services/promptEngine";
 import type { ConfigManager } from "./services/configManager";
-import type { FileContext, Logger } from "./types";
+import type { ChatMessage, Logger, RetrievedChunk } from "./types";
 import {
   parseWebviewMessage,
   type ErrorAction,
   type HostMessage,
+  type OnboardingView,
 } from "./webviewProtocol";
 
 // The sidebar chat panel (FEATURES.md §3, DATA_FLOW.md §3, UI_UX.md). A
@@ -28,26 +34,17 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   private currentRequest?: AbortController;
   /** The last message the user sent, re-sent by the "Retry" error action. */
   private pendingMessage?: string;
-  /**
-   * The most recent text editor the user worked in. Tracked because focusing
-   * the chat webview clears `window.activeTextEditor`, which would otherwise
-   * lose the current-file context (FEATURES.md §3).
-   */
-  private lastEditor?: vscode.TextEditor;
+  /** Drives the onboarding screen when setup isn't complete (WP2). */
+  private onboarding?: OnboardingController;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly ollama: OllamaService,
     private readonly config: ConfigManager,
     private readonly logger: Logger,
-  ) {
-    this.lastEditor = vscode.window.activeTextEditor;
-  }
-
-  /** Record the active editor so chat keeps its file context when focused. */
-  noteActiveEditor(editor: vscode.TextEditor | undefined): void {
-    if (editor) this.lastEditor = editor;
-  }
+    /** Shared context seam — absent when no workspace folder is open. */
+    private readonly context?: ContextService,
+  ) {}
 
   async resolveWebviewView(view: vscode.WebviewView): Promise<void> {
     this.view = view;
@@ -65,7 +62,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       if (!msg) return;
       switch (msg.type) {
         case "ready":
-          void this.sendInit();
+          void this.onReady();
+          break;
+        case "onboardingAction":
+          void this.onboarding?.handleAction(msg.id);
           break;
         case "sendMessage":
           void this.handleUserMessage(msg.text);
@@ -90,6 +90,34 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           break;
       }
     });
+  }
+
+  /** Wire the onboarding controller (created in extension.ts) to this view. */
+  attachOnboarding(controller: OnboardingController): void {
+    this.onboarding = controller;
+  }
+
+  /** Send an onboarding screen to the webview (called by the controller). */
+  postOnboarding(view: OnboardingView): void {
+    this.post({ type: "onboarding", view });
+  }
+
+  /** Switch the webview from onboarding to chat (called when setup completes). */
+  showChat(): void {
+    void this.sendInit();
+  }
+
+  /**
+   * On webview ready: show onboarding if setup isn't complete (and a controller
+   * is wired), otherwise initialise the chat UI.
+   */
+  private async onReady(): Promise<void> {
+    await this.config.load();
+    if (!this.config.get().onboardingComplete && this.onboarding) {
+      this.onboarding.begin();
+    } else {
+      await this.sendInit();
+    }
   }
 
   private async sendInit(): Promise<void> {
@@ -128,15 +156,97 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
-    // Build the prompt from the prior history, then record this user turn.
-    const fileContext = this.gatherFileContext();
-    const messages = this.prompt.buildChatPrompt(
-      text,
+    const { isCodebase, query } = parseCodebaseQuery(text);
+    const fileContext = this.context?.gatherFileContext();
+
+    // Build the prompt from the prior history, then record this user turn. For
+    // @codebase, the model sees the cleaned query (token stripped) — that is
+    // what we store in history so later turns stay consistent.
+    let messages: ChatMessage[];
+    if (isCodebase) {
+      const built = await this.buildCodebasePrompt(query, fileContext);
+      if (!built) return; // an inline notice was already posted
+      messages = built;
+      this.conversation.addUser(query);
+    } else {
+      messages = this.prompt.buildChatPrompt(
+        text,
+        this.conversation.getHistory(),
+        fileContext,
+      );
+      this.conversation.addUser(text);
+    }
+
+    await this.streamAssistant(messages, model);
+  }
+
+  /**
+   * Run the @codebase retrieval pipeline (DATA_FLOW.md §4) and assemble the
+   * prompt. Posts retrieval status + file chips to the webview. Returns null
+   * (after posting an inline notice) when the request can't proceed — no
+   * workspace, an empty query, or an index that isn't ready.
+   */
+  private async buildCodebasePrompt(
+    query: string,
+    fileContext: ReturnType<NonNullable<ContextService["gatherFileContext"]>>,
+  ): Promise<ChatMessage[] | null> {
+    if (!this.config.get().onboardingComplete) {
+      this.postError("Finish LocalPilot setup before using @codebase.");
+      return null;
+    }
+    if (!this.context) {
+      this.postError("Open a workspace folder to search your codebase.");
+      return null;
+    }
+    if (query.length === 0) {
+      this.postError("Add a question after @codebase.");
+      return null;
+    }
+    if (!(await this.context.isIndexed())) {
+      this.postError(
+        "Your codebase isn't indexed yet — it may still be indexing. Try again shortly.",
+        "retry",
+      );
+      return null;
+    }
+
+    this.post({ type: "retrievalStart" });
+    let chunks: RetrievedChunk[] = [];
+    try {
+      chunks = await this.context.retrieve(query);
+    } catch (err) {
+      // A real retrieval failure is distinct from "no results" — tell the user
+      // and abort rather than silently answering from zero context.
+      this.logger.error("Codebase retrieval failed", err);
+      this.post({ type: "retrievalComplete", files: [] });
+      this.postError("Couldn't search your codebase. Try again.", "retry");
+      return null;
+    }
+    // Show relative paths to the user and the model.
+    const relChunks = chunks.map((c) => ({
+      ...c,
+      filename: vscode.workspace.asRelativePath(c.filename),
+    }));
+    const files = [...new Set(relChunks.map((c) => c.filename))];
+    this.logger.info(
+      `@codebase "${query}" → ${chunks.length} chunk(s) from ` +
+        `${files.length} file(s): ${files.join(", ") || "(none)"}`,
+    );
+    this.post({ type: "retrievalComplete", files });
+
+    return this.prompt.buildCodebaseChatPrompt(
+      query,
       this.conversation.getHistory(),
+      formatCodebaseContext(relChunks),
       fileContext,
     );
-    this.conversation.addUser(text);
+  }
 
+  /** Stream a model response into the webview and record it on success. */
+  private async streamAssistant(
+    messages: ChatMessage[],
+    model: string,
+  ): Promise<void> {
     this.post({ type: "streamStart" });
     const request = new AbortController();
     this.currentRequest = request;
@@ -184,22 +294,6 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  /** Automatic context from the active editor (FEATURES.md §3). */
-  private gatherFileContext(): FileContext | undefined {
-    const editor = vscode.window.activeTextEditor ?? this.lastEditor;
-    if (!editor) return undefined;
-    const doc = editor.document;
-    const withinLimit = doc.lineCount <= MAX_CONTEXT_FILE_LINES;
-    const selection = editor.selection;
-    return {
-      filename: vscode.workspace.asRelativePath(doc.uri),
-      languageId: doc.languageId,
-      content: withinLimit ? doc.getText() : undefined,
-      cursorLine: selection.active.line + 1,
-      selectedText: selection.isEmpty ? undefined : doc.getText(selection),
-    };
-  }
-
   private friendlyError(err: unknown): string {
     if (
       err instanceof OllamaError &&
@@ -223,6 +317,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     const styleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, "media", "webview.css"),
     );
+    const katexCssUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, "media", "katex.min.css"),
+    );
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, "media", "webview.js"),
     );
@@ -240,10 +337,25 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="${katexCssUri}" rel="stylesheet" />
   <link href="${styleUri}" rel="stylesheet" />
   <title>LocalPilot</title>
 </head>
 <body>
+  <!-- Onboarding overlay (WP2). Hidden until the host sends an "onboarding"
+       message; CSS hides the chat UI while body.onboarding-active is set. -->
+  <section class="onboarding" id="onboarding" aria-live="polite">
+    <div class="ob-logo">◉ LocalPilot</div>
+    <div class="ob-title" id="ob-title"></div>
+    <div class="ob-detail" id="ob-detail"></div>
+    <div class="ob-spinner" id="ob-spinner" hidden></div>
+    <div class="ob-progress" id="ob-progress" hidden>
+      <div class="ob-bar"><div class="ob-bar-fill" id="ob-bar-fill"></div></div>
+      <div class="ob-eta" id="ob-eta"></div>
+    </div>
+    <button class="ob-action" id="ob-action" hidden></button>
+  </section>
+
   <header class="header">
     <div class="header-titles">
       <span class="wordmark">LocalPilot</span>

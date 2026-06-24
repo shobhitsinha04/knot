@@ -134,11 +134,35 @@ export const RECENCY_HALF_LIFE_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** Directories never descended into during indexing (DATA_FLOW.md §5). */
 export const SKIP_DIRS: ReadonlySet<string> = new Set([
+  // VCS + JS deps
   "node_modules",
   ".git",
+  // Build / generated output
   "dist",
   "build",
+  "out",
+  "target", // Rust / Java
+  "vendor", // Go / PHP
+  ".next",
+  ".nuxt",
+  ".svelte-kit",
+  "coverage",
+  // Python virtual environments + caches (often large, never the user's code)
+  "venv",
+  ".venv",
+  "env",
+  "virtualenv",
+  "site-packages",
   "__pycache__",
+  ".tox",
+  ".nox",
+  ".pytest_cache",
+  ".mypy_cache",
+  ".ruff_cache",
+  // Tooling caches
+  ".cache",
+  ".gradle",
+  ".idea",
 ]);
 
 /** Extensions treated as binary (skipped) without a content sniff. */
@@ -211,8 +235,33 @@ export const BINARY_FILE_EXTENSIONS: ReadonlySet<string> = new Set([
 
 /** System prompt for sidebar chat without @codebase (DATA_FLOW.md §3). */
 export const CHAT_SYSTEM_PROMPT =
-  "You are a coding assistant. You have access to the user's current file. " +
-  "Answer concisely and accurately.";
+  "You are a coding assistant integrated into the user's editor. Answer the " +
+  "question directly and concisely, staying strictly on topic — do not pad the " +
+  "reply or drift into unrelated background. When the current file is provided, " +
+  "ground your answer in it. Use Markdown and put code in fenced code blocks. " +
+  "For math, use KaTeX: wrap inline math in single dollar signs ($...$) and " +
+  "block formulas in double dollar signs ($$...$$); do not use \\( \\) or " +
+  "\\[ \\] or bare brackets. Add extra detail only when it is needed.";
+
+/**
+ * System prompt for an @codebase chat turn (DATA_FLOW.md §4). Used instead of
+ * CHAT_SYSTEM_PROMPT when retrieved code context is attached to the message.
+ * Refines the spec's base wording to keep answers grounded, specific, and on
+ * topic, and to emit KaTeX-renderable math delimiters.
+ */
+export const CODEBASE_SYSTEM_PROMPT =
+  "You are a coding assistant with access to the user's codebase. Answer using " +
+  "the provided code context: quote the specific snippets, function or variable " +
+  "names, values, or formulas from it that are relevant, and cite the file name " +
+  "you drew them from. If the answer is not in the " +
+  "provided context, say so plainly instead of guessing. Be concise and stay " +
+  "strictly on topic. Use Markdown with fenced code blocks for code. For math, " +
+  "use KaTeX: wrap inline math in single dollar signs ($...$) and block " +
+  "formulas in double dollar signs ($$...$$); do not use \\( \\) or \\[ \\] or " +
+  "bare brackets.";
+
+/** The token a user types in chat to trigger codebase retrieval. */
+export const CODEBASE_TOKEN = "@codebase";
 
 /** Chat sampling options (DATA_FLOW.md §3: temperature 0.7, top_p 0.95). */
 export const CHAT_TEMPERATURE = 0.7;
@@ -237,8 +286,13 @@ export const MAX_HISTORY_MESSAGES = 20;
  * response can legitimately stream for a long time, so this aborts only when no
  * response has *started*; once tokens flow, streaming continues until done or
  * the user presses Stop (FEATURES.md §3 timeout state).
+ *
+ * Set generously (2 min) because time-to-first-token covers prompt *prefill*,
+ * which is slow for large prompts (an @codebase turn adds 8 retrieved chunks)
+ * and slower still when the model is cold-loaded or the machine is under memory
+ * pressure. A tighter budget aborted legitimate-but-slow first tokens.
  */
-export const CHAT_FIRST_TOKEN_TIMEOUT_MS = 30_000;
+export const CHAT_FIRST_TOKEN_TIMEOUT_MS = 120_000;
 
 // ----------------------------------------------------------------------------
 // Inline completions (PHASES.md Phase 4 / DATA_FLOW.md §1)
@@ -325,8 +379,10 @@ export const COMPLETION_LANGUAGES: readonly string[] = [
  * only the rewritten code — any prose would be inserted into the file verbatim.
  */
 export const EDIT_SYSTEM_PROMPT =
-  "Rewrite the selected code according to the instruction. " +
-  "Return only the rewritten code, no explanation, no markdown fences.";
+  "Rewrite ONLY the selected code according to the instruction. The code before " +
+  "and after the selection is shown for context only — do NOT repeat, restate, " +
+  "or regenerate any of it; assume it already exists. Return only the rewritten " +
+  "replacement for the selection, with no explanation and no markdown fences.";
 
 /** Edit sampling (DATA_FLOW.md §2). Low temperature for faithful rewrites. */
 export const EDIT_TEMPERATURE = 0.2;
