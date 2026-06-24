@@ -13,7 +13,7 @@ against them, not treated as the source of truth:
 - `docs/JUDGE_SCORES.md` — per-phase Judge review scores.
 - Git history — the commit each in-progress (Phase 6) fix landed in.
 
-Legend: **Issue → Fix → ⚠️ Caveat.** "Open" items are known issues still tracked
+Legend: **Issue → Fix → Caveat.** "Open" items are known issues still tracked
 (Linear is external to this repo).
 
 ---
@@ -24,7 +24,7 @@ Legend: **Issue → Fix → ⚠️ Caveat.** "Open" items are known issues still
    resolve `localhost` to `::1` before `127.0.0.1`, but Ollama listens on the
    IPv4 loopback, so calls failed.
    **Fix:** `OLLAMA_DEFAULT_BASE_URL = http://127.0.0.1:11434` (literal IPv4).
-   ⚠️ Still loopback-only, so privacy is unchanged — but the IPv4 address is now
+    Still loopback-only, so privacy is unchanged — but the IPv4 address is now
    the baked-in default; anything that later exposes a configurable `baseUrl`
    must preserve this default or the bug returns.
 
@@ -34,7 +34,7 @@ Legend: **Issue → Fix → ⚠️ Caveat.** "Open" items are known issues still
    **Fix:** treat **model presence** (`hasModel` via `GET /api/tags`) as the
    success signal, not the exit code; retry up to `OLLAMA_PULL_MAX_ATTEMPTS = 3`;
    condense stderr via `summariseStderr` for diagnostics.
-   ⚠️ The presence check uses exact `includes()` matching (see Open below), and
+    The presence check uses exact `includes()` matching (see Open below), and
    because the exit code is ignored, a model left present from a *previous,
    stale* pull would read as success.
 
@@ -42,30 +42,30 @@ Legend: **Issue → Fix → ⚠️ Caveat.** "Open" items are known issues still
    **Fix:** generalized disk-aware fallback — `TIER_REQUIRED_DISK_GB` defines a
    per-tier free-disk floor and `applyDiskFallback` steps down one tier at a time
    until the floor is met.
-   ⚠️ Only Tier 4's floor (30 GB) comes straight from `HARDWARE_PROFILES.md`; the
+    Only Tier 4's floor (30 GB) comes straight from `HARDWARE_PROFILES.md`; the
    lower-tier floors are a generalization, not spec-explicit.
 
 4. **Non-standard Homebrew prefix → false "Ollama not installed".**
    **Fix:** `findBinary()` falls back to scanning `PATH` after the known install
    paths.
-   ⚠️ Covers known paths + `PATH` only; an install outside both is still missed.
+    Covers known paths + `PATH` only; an install outside both is still missed.
 
 5. **36 GB RAM was ambiguous** — `HARDWARE_PROFILES.md` listed it under both
    Tier 3 and Tier 4.
    **Fix:** resolved to **Tier 3** (14B chat / 3B autocomplete), formalized in
    DECISIONS 012; `detect()` maps exactly 36 → T3, 37 → T4.
-   ⚠️ A deliberate deviation from one reading of the spec table.
+    A deliberate deviation from one reading of the spec table.
 
 6. **Helicone observability proxy dropped from v1** (DECISIONS 011, amends 008).
    **Fix:** `OllamaService` calls Ollama directly via the configurable base URL;
    dev debugging uses the VS Code Output Channel.
-   ⚠️ No observability layer in v1; structured so a proxy can slot back in later
+    No observability layer in v1; structured so a proxy can slot back in later
    with no call-site changes. ARCHITECTURE/TECH_STACK/DATA_FLOW/PHASES updated.
 
 7. **Model pulls use the CLI, not the HTTP API** (spec deviation). `pullModel`
    shells out to `ollama pull` + stdout parsing (per PHASES / ONBOARDING_FLOW),
    not `POST /api/pull` (which TECH_STACK lists).
-   ⚠️ The CLI path is what required the presence-check/retry robustness in #2;
+    The CLI path is what required the presence-check/retry robustness in #2;
    switching to `POST /api/pull` (cleaner streamed JSON) remains an option if
    spurious CLI failures recur.
 
@@ -88,7 +88,7 @@ Legend: **Issue → Fix → ⚠️ Caveat.** "Open" items are known issues still
    **Fix:** `search()` uses `.distanceType("cosine")` and
    `computeSimilarity = clamp(1 − distance, 0, 1)` → meaningful ~0.5–0.63 scores
    and relevant ranking.
-   ⚠️ A deliberate, documented deviation: DATA_FLOW §3/§4 text implied L2.
+    A deliberate, documented deviation: DATA_FLOW §3/§4 text implied L2.
 
 2. **Dense 150-line chunks returned HTTP 500 and were silently dropped**
    (~23 of 76 in one run). `nomic-embed-text` has a ~2048-token context that a
@@ -96,19 +96,19 @@ Legend: **Issue → Fix → ⚠️ Caveat.** "Open" items are known issues still
    **Fix:** `EMBED_MAX_CHARS = 4000` truncates the **embedding input** only; the
    **full** chunk text is still stored for prompt assembly, and chunk line
    geometry is unchanged.
-   ⚠️ 4000 is empirical (≈4500 is the breaking point). For a very dense chunk the
+    4000 is empirical (≈4500 is the breaking point). For a very dense chunk the
    embedding represents only its first ~4000 chars, so retrieval of such chunks
    is approximate even though citations stay line-accurate.
 
 3. **"Recency" is undefined in DATA_FLOW.**
    **Fix:** implemented as exponential decay with a 30-day half-life
    (`RECENCY_HALF_LIFE_MS`), isolated as one constant.
-   ⚠️ Invented behaviour; trivially reversible by changing the constant/weight.
+    Invented behaviour; trivially reversible by changing the constant/weight.
 
 4. **LanceDB ships a native `.node` binary that can't be bundled.**
    **Fix:** `@lancedb/lancedb` is marked **external** in esbuild and `require()`d
    at runtime.
-   ⚠️ The native module must be present at runtime — flagged as a Phase 7 `.vsix`
+    The native module must be present at runtime — flagged as a Phase 7 `.vsix`
    packaging concern (the binary has to be packaged alongside the bundle).
 
 5. **Watcher event before the first full index silently no-opped.**
@@ -143,12 +143,12 @@ Legend: **Issue → Fix → ⚠️ Caveat.** "Open" items are known issues still
    `window.activeTextEditor`, so `gatherFileContext` saw nothing. (Found in F5.)
    **Fix:** track `lastEditor` via `onDidChangeActiveTextEditor`; context uses
    `activeTextEditor ?? lastEditor`.
-   ⚠️ A heuristic — `lastEditor` can be stale if the user juggles many editors
+    A heuristic — `lastEditor` can be stale if the user juggles many editors
    before chatting.
 
 2. **Chat history lost when switching activity-bar views.**
    **Fix:** register the provider with `retainContextWhenHidden: true`.
-   ⚠️ Keeps the webview alive in memory while hidden.
+    Keeps the webview alive in memory while hidden.
 
 3. **Streaming felt frozen during long prefill.**
    **Fix:** show the blinking cursor (later a three-dot typing indicator)
@@ -172,7 +172,7 @@ Legend: **Issue → Fix → ⚠️ Caveat.** "Open" items are known issues still
 7. **XSS risk from rendering model output as markdown/HTML.**
    **Fix:** a CSP with `script-src 'nonce-…'` plus `marked` configured to escape
    raw HTML.
-   ⚠️ No DOMPurify (deliberately no new dependency, user-confirmed); defense rests
+    No DOMPurify (deliberately no new dependency, user-confirmed); defense rests
    on the CSP + marked escaping rather than sanitization.
 
 8. **Webview DOM types collided with `@types/node`'s fetch types.**
@@ -207,12 +207,12 @@ Legend: **Issue → Fix → ⚠️ Caveat.** "Open" items are known issues still
    DATA_FLOW §1's 3 s budget killed it. (Judge minor.)
    **Fix:** timeout set to **5 s**, recorded as DECISIONS 013 (DATA_FLOW §1
    annotated).
-   ⚠️ A hardware-informed default (warm path ~0.3 s, well under the 2 s DoD);
+    A hardware-informed default (warm path ~0.3 s, well under the 2 s DoD);
    revisit once more machines are profiled.
 
 4. **Cold-load latency dominated time-to-first-completion.**
    **Fix:** `keep_alive` (30 m) keeps the model resident + an activation pre-warm.
-   ⚠️ Additions beyond DATA_FLOW §1; keeping the model resident holds memory.
+    Additions beyond DATA_FLOW §1; keeping the model resident holds memory.
 
 5. **The chat-header Autocomplete toggle didn't reach the provider.** Chat and the
    completion provider held separate `ConfigManager` instances.
@@ -223,7 +223,7 @@ Legend: **Issue → Fix → ⚠️ Caveat.** "Open" items are known issues still
    cursor.**
    **Fix:** `cleanCompletion(raw, suffix)` strips echoed special tokens, unwraps
    stray fences, and trims a tail that merely repeats the start of the suffix.
-   ⚠️ Best-effort small-model cleanup; returns `""` when nothing usable remains.
+    Best-effort small-model cleanup; returns `""` when nothing usable remains.
 
 **Open:**
 - Provider-level logic (debounce, supersession, status-bar ref-count, timing) is
@@ -238,14 +238,14 @@ Legend: **Issue → Fix → ⚠️ Caveat.** "Open" items are known issues still
 1. **The spec's floating input box isn't buildable in stable APIs** — a decoration
    can't host an editable input.
    **Fix:** use `showInputBox` (DECISIONS 014).
-   ⚠️ The CMD+K UI is an approximation of UI_UX.md, bounded by stable VS Code APIs.
+    The CMD+K UI is an approximation of UI_UX.md, bounded by stable VS Code APIs.
 
 2. **No theme-safe floating action bar or ±gutter glyphs.** A floating interactive
    widget isn't available, and gutter icons can't follow the theme without
    hardcoding colours (UI_UX forbids).
    **Fix:** render the diff as theme-coloured whole-line decorations + an
    Accept/Reject CodeLens (DECISIONS 015).
-   ⚠️ No `−`/`+` gutter glyphs; the action bar is a CodeLens, not a floating bar.
+    No `−`/`+` gutter glyphs; the action bar is a CodeLens, not a floating bar.
 
 3. **Small instruct models wrap output in ```lang fences despite the system
    prompt.**
@@ -282,7 +282,7 @@ Legend: **Issue → Fix → ⚠️ Caveat.** "Open" items are known issues still
    (`c307b51`); added a **"LocalPilot: Rebuild Index"** command for a clean full
    rebuild (`e570550`); covered indexing idempotency + reconcile mtime-diff with
    tests (`d6872ce`).
-   ⚠️ Reconciliation is driven by an mtime diff — a change that doesn't move mtime
+    Reconciliation is driven by an mtime diff — a change that doesn't move mtime
    wouldn't be reconciled; the manual Rebuild command is the escape hatch.
 
 2. **`@codebase` retrieval wasn't wired into chat.**
@@ -294,7 +294,7 @@ Legend: **Issue → Fix → ⚠️ Caveat.** "Open" items are known issues still
    stale task chips lingered.
    **Fix:** longer first-token timeout, skip venvs during the walk, clear stale
    chips.
-   ⚠️ The venv skip is a heuristic directory match (alongside the existing
+    The venv skip is a heuristic directory match (alongside the existing
    skip-dir list), not a full environment detection.
 
 4. **Grounded answers were too loose and leaked raw LaTeX.**
@@ -303,12 +303,12 @@ Legend: **Issue → Fix → ⚠️ Caveat.** "Open" items are known issues still
 
 5. **Math wasn't rendered in answers.**
    **Fix:** render math with **KaTeX** in chat / `@codebase` answers (`3f93180`).
-   ⚠️ KaTeX is bundled into the webview (watch the Phase 7 bundle-size budget).
+    KaTeX is bundled into the webview (watch the Phase 7 bundle-size budget).
 
 6. **Incremental index updates didn't fire reliably from the file watcher.**
    **Fix:** drive incremental updates from `onDidSaveTextDocument` instead
    (`1db9437`).
-   ⚠️ Updates are now **save-driven** — edits that never hit disk aren't indexed
+    Updates are now **save-driven** — edits that never hit disk aren't indexed
    until saved.
 
 7. **`@codebase` could read stale chunks** right after an edit.
