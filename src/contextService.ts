@@ -86,14 +86,14 @@ export class ContextService {
     return this.index.isIndexed();
   }
 
-  /** Re-index a single changed file (file watcher). */
-  updateFile(filePath: string): Promise<void> {
-    return this.index.updateFile(filePath);
+  /** Re-index a single changed file (file watcher / save). */
+  updateFile(filePath: string, source?: string): Promise<void> {
+    return this.index.updateFile(filePath, source);
   }
 
   /** Drop a deleted file's chunks (file watcher). */
-  deleteFile(filePath: string): Promise<void> {
-    return this.index.deleteFile(filePath);
+  deleteFile(filePath: string, source?: string): Promise<void> {
+    return this.index.deleteFile(filePath, source);
   }
 
   /**

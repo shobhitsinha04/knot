@@ -547,32 +547,32 @@ function registerIndexWatcher(
   if (indexWatcherRegistered) return;
   indexWatcherRegistered = true;
 
-  const update = (uri: vscode.Uri): void => {
+  const update = (uri: vscode.Uri, source: string): void => {
     void contextService
-      .updateFile(uri.fsPath)
+      .updateFile(uri.fsPath, source)
       .catch((err) =>
         logger.warn(`Index update failed for ${uri.fsPath}: ${String(err)}`),
       );
   };
-  const remove = (uri: vscode.Uri): void => {
+  const remove = (uri: vscode.Uri, source: string): void => {
     void contextService
-      .deleteFile(uri.fsPath)
+      .deleteFile(uri.fsPath, source)
       .catch((err) =>
         logger.warn(`Index delete failed for ${uri.fsPath}: ${String(err)}`),
       );
   };
 
   const watcher = vscode.workspace.createFileSystemWatcher("**/*");
-  watcher.onDidCreate(update);
-  watcher.onDidChange(update); // best-effort for external (non-editor) edits
-  watcher.onDidDelete(remove);
+  watcher.onDidCreate((uri) => update(uri, "fs-create"));
+  watcher.onDidChange((uri) => update(uri, "fs-change")); // external edits
+  watcher.onDidDelete((uri) => remove(uri, "fs-delete"));
 
   context.subscriptions.push(
     watcher,
     // Reliable signal for editor saves (manual + autosave). Only file-scheme
     // documents are indexable; updateFile re-checks skip rules.
     vscode.workspace.onDidSaveTextDocument((doc) => {
-      if (doc.uri.scheme === "file") update(doc.uri);
+      if (doc.uri.scheme === "file") update(doc.uri, "save");
     }),
   );
   logger.info("Index watcher registered (save + create/change/delete events).");

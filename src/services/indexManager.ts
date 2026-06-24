@@ -250,17 +250,34 @@ export class IndexManager {
     return rerank(rows);
   }
 
-  /** Re-index a single file: drop its old chunks, then re-chunk and insert. */
-  async updateFile(filePath: string): Promise<void> {
-    if (!this.isIndexablePath(filePath)) return;
+  /**
+   * Re-index a single file: drop its old chunks, then re-chunk and insert.
+   * `source` is a label for the trigger (e.g. "save", "fs-change") echoed in the
+   * log so overlapping triggers are distinguishable.
+   */
+  async updateFile(filePath: string, source = "watcher"): Promise<void> {
+    const rel = path.relative(this.workspacePath, filePath);
+    if (!this.isIndexablePath(filePath)) {
+      // Only note skips for explicit saves — watcher events fire for many
+      // non-source files and would flood the log.
+      if (source === "save") {
+        this.logger.info(`[index] ${source}: skipped ${rel} (not indexable)`);
+      }
+      return;
+    }
+    const started = Date.now();
     const release = await this.acquireLock();
     try {
       await this.deleteChunksFor(filePath);
       const records = await this.buildRecords(filePath);
       if (records.length > 0) await this.insert(records);
+      const span = records.length
+        ? ` lines ${records[0].startLine}-${records[records.length - 1].endLine},`
+        : "";
       this.logger.info(
-        `Index updated: ${path.relative(this.workspacePath, filePath)} ` +
-          `(${records.length} chunk${records.length === 1 ? "" : "s"}).`,
+        `[index] ${source}: reindexed ${rel} — ${records.length} ` +
+          `chunk${records.length === 1 ? "" : "s"},${span} ` +
+          `${Date.now() - started}ms`,
       );
     } finally {
       await release();
@@ -268,13 +285,12 @@ export class IndexManager {
   }
 
   /** Remove all chunks belonging to a deleted file. */
-  async deleteFile(filePath: string): Promise<void> {
+  async deleteFile(filePath: string, source = "watcher"): Promise<void> {
+    const rel = path.relative(this.workspacePath, filePath);
     const release = await this.acquireLock();
     try {
       await this.deleteChunksFor(filePath);
-      this.logger.info(
-        `Index entry removed: ${path.relative(this.workspacePath, filePath)}.`,
-      );
+      this.logger.info(`[index] ${source}: removed ${rel} from the index`);
     } finally {
       await release();
     }
