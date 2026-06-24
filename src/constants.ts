@@ -379,8 +379,10 @@ export const COMPLETION_LANGUAGES: readonly string[] = [
  * only the rewritten code — any prose would be inserted into the file verbatim.
  */
 export const EDIT_SYSTEM_PROMPT =
-  "Rewrite the selected code according to the instruction. " +
-  "Return only the rewritten code, no explanation, no markdown fences.";
+  "Rewrite ONLY the selected code according to the instruction. The code before " +
+  "and after the selection is shown for context only — do NOT repeat, restate, " +
+  "or regenerate any of it; assume it already exists. Return only the rewritten " +
+  "replacement for the selection, with no explanation and no markdown fences.";
 
 /** Edit sampling (DATA_FLOW.md §2). Low temperature for faithful rewrites. */
 export const EDIT_TEMPERATURE = 0.2;
