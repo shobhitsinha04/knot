@@ -41,6 +41,9 @@ export function activate(context: vscode.ExtensionContext): void {
   const channel = vscode.window.createOutputChannel("LocalPilot");
   context.subscriptions.push(channel);
   const logger = createLogger(channel);
+  // Heartbeat: a guaranteed first line so the Output channel is never blank when
+  // the extension activates — confirms activation ran and logging works.
+  logger.info("LocalPilot activating.");
 
   // Create the service synchronously here (not inside the async smoke test) so
   // deactivate() can always stop the `ollama serve` process we may have spawned.
