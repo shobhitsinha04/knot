@@ -140,6 +140,23 @@ export class CmdKController
       return;
     }
 
+    // Pre-flight so a down daemon / not-yet-pulled model gives a specific reason
+    // rather than the generic "couldn't complete that edit" after it fails.
+    if (!(await this.ollama.isRunning())) {
+      this.logger.warn("[cmd+k] Ollama isn't running.");
+      void vscode.window.showWarningMessage(
+        "LocalPilot isn't running. Open the LocalPilot chat to start it, then try again.",
+      );
+      return;
+    }
+    if (!(await this.ollama.hasModel(model))) {
+      this.logger.warn(`[cmd+k] model ${model} not installed.`);
+      void vscode.window.showWarningMessage(
+        `The model (${model}) isn't ready yet — it may still be downloading.`,
+      );
+      return;
+    }
+
     const session: EditSession = {
       editor,
       phase: "streaming",

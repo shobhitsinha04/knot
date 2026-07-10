@@ -115,7 +115,7 @@ export class OnboardingController {
 
   private showWelcome(): void {
     this.phase = "welcome";
-    void this.deps.config.update({ onboardingStep: STEP_WELCOME });
+    this.persistStep(STEP_WELCOME);
     this.deps.post({
       step: 0,
       total: TOTAL_STEPS,
@@ -196,7 +196,7 @@ export class OnboardingController {
   private postModelsConsent(): void {
     if (!this.hw || !this.models) return;
     this.phase = "models";
-    void this.deps.config.update({ onboardingStep: STEP_MODELS });
+    this.persistStep(STEP_MODELS);
     const m = this.models;
     this.deps.post({
       step: 2,
@@ -218,7 +218,7 @@ export class OnboardingController {
   private async runDownloadAndIndex(): Promise<void> {
     if (!this.models) return this.runDetectAndSelect();
     this.phase = "downloading";
-    void this.deps.config.update({ onboardingStep: STEP_DOWNLOADING });
+    this.persistStep(STEP_DOWNLOADING);
     const { ollama, contextService } = this.deps;
 
     // Step 3 — install Ollama. A permission failure gets a manual-install link
@@ -304,7 +304,7 @@ export class OnboardingController {
   /** Step 6 — the ready screen, noting when no code files were found. */
   private showReady(fileCount: number): void {
     this.phase = "ready";
-    void this.deps.config.update({ onboardingStep: STEP_READY });
+    this.persistStep(STEP_READY);
     const noFiles =
       fileCount === 0
         ? "No code files were found here, so @codebase has nothing to search " +
@@ -375,6 +375,21 @@ export class OnboardingController {
 
   private info(step: number, title: string, detail: string): void {
     this.deps.post({ step, total: TOTAL_STEPS, title, detail, mode: "info" });
+  }
+
+  /**
+   * Persist the resume checkpoint without blocking the UI. Fire-and-forget, but
+   * guarded: a config write can reject (disk full / read-only home), and an
+   * unhandled rejection would be worse than a lost checkpoint.
+   */
+  private persistStep(step: number): void {
+    void this.deps.config
+      .update({ onboardingStep: step })
+      .catch((err) =>
+        this.deps.logger.warn(
+          `Couldn't persist onboarding step: ${String(err)}`,
+        ),
+      );
   }
 
   private error(

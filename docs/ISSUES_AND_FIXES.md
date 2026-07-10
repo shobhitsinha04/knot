@@ -325,6 +325,47 @@ Legend: **Issue → Fix → Caveat.** "Open" items are known issues still tracke
 
 ---
 
+## Phase 7 — Polish, Testing, and Private Beta  ·  *IN PROGRESS*
+
+1. **`.vsix` dropped the LanceDB native binary.** `.vscodeignore` excluded all of
+   `node_modules/**`, but `@lancedb/lancedb` is marked `external` in esbuild (a
+   platform-specific `.node` that can't be bundled), so the packaged extension
+   would crash on load.
+   **Fix:** keep `node_modules/@lancedb/**` + `node_modules/reflect-metadata/**`
+   in the package; verified the binary + KaTeX assets ship in
+   `localpilot-0.1.0.vsix` (`fa4c7a4`).
+   Caveat: only the darwin-arm64 binary is present (v1 scope); a cross-platform
+   build would need the other optional `@lancedb/lancedb-<platform>` packages.
+
+**Error-handling audit (pre-beta).** Systematic pass over every feature's failure
+paths. The codebase was already well-guarded (typed `OllamaError`, abort/timeout
+handling, corrupt-config → defaults, best-effort completions, index/embed errors
+caught at call sites). Three real gaps found and fixed:
+
+2. **Unhandled rejection from fire-and-forget config writes.** Onboarding
+   persisted resume checkpoints with `void config.update({ onboardingStep })`;
+   `config.update()` can reject (disk full / read-only home), producing an
+   unhandled promise rejection.
+   **Fix:** a `persistStep()` helper wraps the write with a `.catch()` that logs.
+   Caveat: on a failing write the checkpoint is simply lost (resume falls back a
+   step) — acceptable versus crashing.
+3. **CMD+K gave a generic error when Ollama was down / model missing.** It only
+   checked the model was *configured*, then failed mid-stream with "couldn't
+   complete that edit."
+   **Fix:** pre-flight `isRunning` + `hasModel` checks after the instruction, with
+   a specific message. Caveat: adds two fast local API calls per ⌘K invocation.
+4. **A couple of `void` chat-provider handlers could reject uncaught.**
+   `onReady()` (`config.load`) and `setAutocomplete()` (`config.update`).
+   **Fix:** wrapped both in try/catch that logs.
+
+**Open (deferred within Phase 7):**
+- Performance testing (index a 500-file repo) and completion-latency testing
+  across hardware tiers — not yet run.
+- Broader onboarding disk-full handling is heuristic (`isDiskSpaceError` on the
+  error text) rather than a proactive pre-download free-space check.
+
+---
+
 ## Cross-cutting themes
 
 - **Live-harness verification pays off.** The cosine-vs-L2 (P2 #1), embed-500
