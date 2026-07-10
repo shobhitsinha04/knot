@@ -94,11 +94,21 @@ export function parseWebviewMessage(raw: unknown): WebviewMessage | null {
         ? { type: "onboardingAction", id: m.id as OnboardingActionId }
         : null;
     }
-    case "openExternal":
-      // Only https URLs may be opened from the webview (defence in depth).
-      return typeof m.url === "string" && m.url.startsWith("https://")
-        ? { type: "openExternal", url: m.url }
-        : null;
+    case "openExternal": {
+      // The webview may only ask the host to open the sanctioned ollama.com
+      // pages (https, host-allowlisted) — defence in depth so a malformed or
+      // misused sender can't open an arbitrary site.
+      if (typeof m.url !== "string") return null;
+      try {
+        const u = new URL(m.url);
+        const allowed =
+          u.protocol === "https:" &&
+          (u.hostname === "ollama.com" || u.hostname.endsWith(".ollama.com"));
+        return allowed ? { type: "openExternal", url: m.url } : null;
+      } catch {
+        return null;
+      }
+    }
     default:
       return null;
   }

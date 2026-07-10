@@ -58,18 +58,26 @@ describe("parseWebviewMessage", () => {
     expect(parseWebviewMessage({ type: "onboardingAction" })).toBeNull();
   });
 
-  it("accepts openExternal only for https URLs", () => {
+  it("accepts openExternal only for https ollama.com URLs", () => {
     expect(
       parseWebviewMessage({
         type: "openExternal",
         url: "https://ollama.com/download",
       }),
     ).toEqual({ type: "openExternal", url: "https://ollama.com/download" });
+    // https but a different host → rejected (host allowlist).
     expect(
-      parseWebviewMessage({ type: "openExternal", url: "http://evil.test" }),
+      parseWebviewMessage({ type: "openExternal", url: "https://evil.test" }),
+    ).toBeNull();
+    // wrong protocol / not a URL / missing.
+    expect(
+      parseWebviewMessage({ type: "openExternal", url: "http://ollama.com" }),
     ).toBeNull();
     expect(
       parseWebviewMessage({ type: "openExternal", url: "file:///etc/passwd" }),
+    ).toBeNull();
+    expect(
+      parseWebviewMessage({ type: "openExternal", url: "not a url" }),
     ).toBeNull();
     expect(parseWebviewMessage({ type: "openExternal" })).toBeNull();
   });
