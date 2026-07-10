@@ -106,7 +106,7 @@ export class CmdKController
     if (!model) {
       this.logger.info("[cmd+k] no chat model configured — edit unavailable.");
       void vscode.window.showWarningMessage(
-        "LocalPilot isn't set up yet — run setup and try again.",
+        "Knot isn't set up yet — run setup and try again.",
       );
       return;
     }
@@ -145,7 +145,7 @@ export class CmdKController
     if (!(await this.ollama.isRunning())) {
       this.logger.warn("[cmd+k] Ollama isn't running.");
       void vscode.window.showWarningMessage(
-        "LocalPilot isn't running. Open the LocalPilot chat to start it, then try again.",
+        "Knot isn't running. Open the Knot chat to start it, then try again.",
       );
       return;
     }
@@ -213,7 +213,7 @@ export class CmdKController
     } catch (err) {
       this.logger.error("[cmd+k] edit failed", err);
       void vscode.window.showWarningMessage(
-        "LocalPilot couldn't complete that edit.",
+        "Knot couldn't complete that edit.",
       );
       if (this.session === session) {
         this.session = undefined;

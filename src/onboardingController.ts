@@ -119,7 +119,7 @@ export class OnboardingController {
     this.deps.post({
       step: 0,
       total: TOTAL_STEPS,
-      title: "Welcome to LocalPilot",
+      title: "Welcome to Knot",
       detail:
         "We'll set everything up for you — about 5–15 minutes, mostly the " +
         "one-time model download. After that it all runs offline, and nothing " +
@@ -176,7 +176,7 @@ export class OnboardingController {
         1,
         "Unsupported hardware",
         hw.unsupportedReason ??
-          "LocalPilot v1 supports Apple Silicon only. Intel support is coming.",
+          "Knot v1 supports Apple Silicon only. Intel support is coming.",
         false, // terminal — no retry
       );
       return false;
@@ -313,7 +313,7 @@ export class OnboardingController {
     this.deps.post({
       step: 6,
       total: TOTAL_STEPS,
-      title: "LocalPilot is ready",
+      title: "Knot is ready",
       detail:
         noFiles +
         "Try it:\n• Pause while typing for inline autocomplete\n" +

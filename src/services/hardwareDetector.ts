@@ -186,7 +186,7 @@ export class HardwareDetector {
     return {
       supported: false,
       unsupportedReason:
-        "LocalPilot v1 supports Apple Silicon only. Intel support is coming.",
+        "Knot v1 supports Apple Silicon only. Intel support is coming.",
       isAppleSilicon: false,
       chipBrand,
       chipGeneration: "unknown",

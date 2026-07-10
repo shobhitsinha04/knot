@@ -155,11 +155,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.pendingMessage = text;
     const model = this.config.get().chatModel;
     if (!model) {
-      this.postError("LocalPilot isn't set up yet. Run setup and try again.");
+      this.postError("Knot isn't set up yet. Run setup and try again.");
       return;
     }
     if (!(await this.ollama.isRunning())) {
-      this.postError("LocalPilot isn't running.", "restart");
+      this.postError("Knot isn't running.", "restart");
       return;
     }
     if (!(await this.ollama.hasModel(model))) {
@@ -205,7 +205,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     fileContext: ReturnType<NonNullable<ContextService["gatherFileContext"]>>,
   ): Promise<ChatMessage[] | null> {
     if (!this.config.get().onboardingComplete) {
-      this.postError("Finish LocalPilot setup before using @codebase.");
+      this.postError("Finish Knot setup before using @codebase.");
       return null;
     }
     if (!this.context) {
@@ -302,9 +302,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       await this.ollama.start();
     } catch (err) {
       this.logger.error("Failed to restart Ollama from chat", err);
-      this.postError(
-        "Couldn't restart LocalPilot. Check that Ollama is installed.",
-      );
+      this.postError("Couldn't restart Knot. Check that Ollama is installed.");
     }
   }
 
@@ -313,9 +311,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       err instanceof OllamaError &&
       /did not start responding/.test(err.message)
     ) {
-      return "This took too long. Try a shorter question or restart LocalPilot.";
+      return "This took too long. Try a shorter question or restart Knot.";
     }
-    return "Something went wrong talking to LocalPilot. Try again.";
+    return "Something went wrong talking to Knot. Try again.";
   }
 
   private postError(message: string, action?: ErrorAction): void {
@@ -337,6 +335,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, "media", "webview.js"),
     );
+    const knotMarkUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, "media", "knot-mark.svg"),
+    );
     const csp = [
       `default-src 'none'`,
       `style-src ${webview.cspSource} 'unsafe-inline'`,
@@ -353,13 +354,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="${katexCssUri}" rel="stylesheet" />
   <link href="${styleUri}" rel="stylesheet" />
-  <title>LocalPilot</title>
+  <title>Knot</title>
 </head>
 <body>
   <!-- Onboarding overlay (WP2). Hidden until the host sends an "onboarding"
        message; CSS hides the chat UI while body.onboarding-active is set. -->
   <section class="onboarding" id="onboarding" aria-live="polite">
-    <div class="ob-logo">◉ LocalPilot</div>
+    <div class="ob-logo"><img class="brand-mark" src="${knotMarkUri}" alt="" /> Knot</div>
     <div class="ob-title" id="ob-title"></div>
     <div class="ob-detail" id="ob-detail"></div>
     <div class="ob-spinner" id="ob-spinner" hidden></div>
@@ -373,7 +374,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
   <header class="header">
     <div class="header-titles">
-      <span class="wordmark">LocalPilot</span>
+      <span class="wordmark">Knot</span>
       <span class="model-name" id="model-name"></span>
     </div>
     <div class="header-actions">
@@ -394,7 +395,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
   <div class="conversation" id="conversation">
     <div class="empty-state" id="empty-state">
-      <div class="empty-logo">◉ LocalPilot</div>
+      <div class="empty-logo"><img class="brand-mark" src="${knotMarkUri}" alt="" /> Knot</div>
       <div class="empty-sub">Ask anything about your code.<br/>Type @codebase to search your project.</div>
       <button class="try-chip" data-try="Explain this file">Try: "Explain this file"</button>
       <button class="try-chip" data-try="How does auth work? @codebase">Try: "How does auth work? @codebase"</button>
@@ -402,7 +403,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   </div>
 
   <div class="input-area">
-    <textarea id="input" rows="1" placeholder="Ask LocalPilot..."></textarea>
+    <textarea id="input" rows="1" placeholder="Ask Knot..."></textarea>
     <div class="input-row">
       <button class="send-btn" id="send" title="Send (Enter)" aria-label="Send" disabled>
         <svg class="icon-send" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

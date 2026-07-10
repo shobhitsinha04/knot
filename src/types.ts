@@ -1,4 +1,4 @@
-// Shared types for LocalPilot. Kept free of any `vscode` import so every
+// Shared types for Knot. Kept free of any `vscode` import so every
 // service that uses these types stays unit-testable under Vitest.
 
 /** Hardware tier (HARDWARE_PROFILES.md). Drives model selection. */
@@ -49,7 +49,7 @@ export interface WorkspaceIndexState {
 }
 
 /** Persisted config.json schema (PHASES.md Phase 1). */
-export interface LocalPilotConfig {
+export interface KnotConfig {
   onboardingComplete: boolean;
   /**
    * Last completed onboarding step (0-based), used to resume an interrupted

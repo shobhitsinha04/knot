@@ -1,4 +1,8 @@
-# LocalPilot
+<p align="center">
+  <img src="media/knot-logo.png" alt="Knot" width="160" />
+</p>
+
+# Knot
 
 Zero-config, fully local AI coding assistant for VS Code — **Tab autocomplete**,
 **Cmd+K inline editing**, **sidebar chat**, and **`@codebase` search**, all powered by
@@ -19,7 +23,7 @@ leaves your computer: every model call goes to `127.0.0.1`.
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Tab autocomplete**     | Pause while typing in a supported language; ghost text appears. **Tab** to accept, **Esc** to dismiss.                                                                     |
 | **Cmd+K inline editing** | Select code, press **Cmd+K**, type an instruction. The rewrite streams in as a red/green diff. **Cmd+Enter** to accept, **Esc** to reject (restores the original exactly). |
-| **Sidebar chat**         | Click the LocalPilot icon in the activity bar. Streaming answers, your current file as automatic context, markdown + syntax highlighting, **Stop** / **New Chat**.         |
+| **Sidebar chat**         | Click the Knot icon in the activity bar. Streaming answers, your current file as automatic context, markdown + syntax highlighting, **Stop** / **New Chat**.               |
 | **`@codebase` search**   | Type `@codebase` in a chat message to ground the answer in your indexed project, with file/line citations.                                                                 |
 
 A toggle in the chat header turns inline completions on/off live.
@@ -30,9 +34,9 @@ A toggle in the chat header turns inline completions on/off live.
 
 - **macOS on Apple Silicon.**
 - **VS Code 1.85+.**
-- **~5–30 GB free disk**, depending on your hardware tier — LocalPilot picks
+- **~5–30 GB free disk**, depending on your hardware tier — Knot picks
   model sizes to match your RAM and downloads them on first run.
-- **[Ollama](https://ollama.com)** — if it isn't installed, LocalPilot installs it
+- **[Ollama](https://ollama.com)** — if it isn't installed, Knot installs it
   for you via the official script on first activation and starts it automatically.
 
 You do **not** need to configure anything, sign in, or get an API key. There is no
@@ -42,21 +46,21 @@ cloud account and no telemetry.
 
 ## Install (private beta)
 
-LocalPilot ships as a `.vsix` file during the beta (it's not on the VS Code
-Marketplace yet). You'll be given a `localpilot-<version>.vsix`.
+Knot ships as a `.vsix` file during the beta (it's not on the VS Code
+Marketplace yet). You'll be given a `knot-<version>.vsix`.
 
 **Install it, either way:**
 
 - **In VS Code:** open the Extensions view → the **⋯** (More Actions) menu →
   **Install from VSIX…** → pick the file.
-- **In a terminal:** `code --install-extension localpilot-0.1.0.vsix`
+- **In a terminal:** `code --install-extension knot-0.1.0.vsix`
 
 Then **reload VS Code** and open a project folder. No build step, no sign-in, no
 API key.
 
 ### First run — guided setup
 
-The first time you open a folder, LocalPilot's **onboarding opens in the sidebar**
+The first time you open a folder, Knot's **onboarding opens in the sidebar**
 and sets everything up for you:
 
 1. **Welcome** → click **Get Started**.
@@ -69,23 +73,23 @@ and sets everything up for you:
 
 It runs **once** per machine; after that, opening a folder is instant. If a
 download is interrupted, setup resumes where it left off. Detailed logs are in
-**View → Output → LocalPilot**.
+**View → Output → Knot**.
 
-> Need to redo setup (e.g. you cleared your models)? Run **LocalPilot: Reset and
-> Re-run Setup** from the Command Palette — LocalPilot also auto-reruns setup if a
+> Need to redo setup (e.g. you cleared your models)? Run **Knot: Reset and
+> Re-run Setup** from the Command Palette — Knot also auto-reruns setup if a
 > required model goes missing.
 
 ### Run from source (developers)
 
 ```bash
-git clone https://github.com/shobhitsinha04/localpilot.git
-cd localpilot
+git clone https://github.com/shobhitsinha04/knot.git
+cd knot
 npm install
 npm run build      # bundle to dist/extension.js
 ```
 
 Open the folder in VS Code and press <kbd>F5</kbd> to launch an Extension
-Development Host with LocalPilot loaded.
+Development Host with Knot loaded.
 
 ---
 
@@ -104,9 +108,9 @@ Development Host with LocalPilot loaded.
 
 ### Commands (Cmd+Shift+P)
 
-- **LocalPilot: Rebuild Index** — force a clean, full re-index of the workspace
+- **Knot: Rebuild Index** — force a clean, full re-index of the workspace
   (use if `@codebase` results look stale or incomplete).
-- **LocalPilot: Edit Selection** / **Accept Edit** / **Reject Edit** — the Cmd+K
+- **Knot: Edit Selection** / **Accept Edit** / **Reject Edit** — the Cmd+K
   flow (also bound to Cmd+K / Cmd+Enter / Esc).
 
 ---
@@ -122,9 +126,9 @@ downloads from the Ollama registry.
 
 ## Troubleshooting
 
-- **Setup or model issues** — open the **LocalPilot** Output channel for detailed
+- **Setup or model issues** — open the **Knot** Output channel for detailed
   logs (hardware detection, install, model pulls, request timing).
-- **`@codebase` answers look stale or wrong** — run **LocalPilot: Rebuild Index**.
+- **`@codebase` answers look stale or wrong** — run **Knot: Rebuild Index**.
 - **First completion is slow** — the model is loading; it stays warm afterward.
 - **Known issues, fixes, and their caveats** are catalogued phase by phase in
   [`docs/ISSUES_AND_FIXES.md`](./docs/ISSUES_AND_FIXES.md).
@@ -137,15 +141,15 @@ Your feedback is the whole point of the beta — bug reports, confusion, and "th
 felt slow/awkward" are all useful.
 
 **Where:** open a
-[GitHub issue](https://github.com/shobhitsinha04/localpilot/issues).
+[GitHub issue](https://github.com/shobhitsinha04/knot/issues).
 
 **What to include** (so we can act on it fast):
 
 - What you did and what you expected vs. what happened.
-- Your setup: macOS version, chip + RAM (e.g. M2 / 16 GB), LocalPilot version.
+- Your setup: macOS version, chip + RAM (e.g. M2 / 16 GB), Knot version.
 - Which feature: autocomplete / Cmd+K / chat / `@codebase` / onboarding.
-- Relevant lines from the **LocalPilot** Output channel
-  (**View → Output → LocalPilot**) — it never contains your code, only setup and
+- Relevant lines from the **Knot** Output channel
+  (**View → Output → Knot**) — it never contains your code, only setup and
   timing logs.
 
 Since everything runs locally, we can't see anything unless you tell us — so

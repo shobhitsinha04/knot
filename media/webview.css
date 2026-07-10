@@ -1,5 +1,5 @@
 /* Sidebar chat styles (UI_UX.md). Every colour is a VS Code theme variable so
-   the panel adapts to any theme; the only literal colour is the LocalPilot
+   the panel adapts to any theme; the only literal colour is the Knot
    accent, and the syntax-token palette at the bottom (VS Code does not expose
    per-token theme colours to webviews). Spacing is in 4/8px multiples. */
 
@@ -186,6 +186,17 @@ body {
   color: var(--localpilot-accent);
   font-weight: 600;
   font-size: 15px;
+}
+
+/* The Knot mark shown next to the wordmark in the empty state + onboarding. */
+.brand-mark {
+  height: 1.2em;
+  width: auto;
+  vertical-align: -0.2em;
+  margin-right: 0.35em;
+}
+.ob-logo .brand-mark {
+  height: 1.4em;
 }
 
 .empty-sub {
