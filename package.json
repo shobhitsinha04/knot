@@ -2,10 +2,14 @@
   "name": "localpilot",
   "displayName": "LocalPilot",
   "description": "Zero-config, fully local AI coding assistant for VS Code. Autocomplete, chat, and codebase search powered by Ollama — nothing ever leaves your machine.",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "publisher": "localpilot",
   "private": true,
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shobhitsinha04/localpilot.git"
+  },
   "engines": {
     "vscode": "^1.85.0",
     "node": ">=18.0.0"
@@ -98,6 +102,7 @@
     "vscode:prepublish": "npm run build -- --production",
     "build": "node esbuild.js",
     "watch": "node esbuild.js --watch",
+    "perf": "esbuild scripts/perf.ts --bundle --platform=node --target=node18 --format=cjs --external:@lancedb/lancedb --outfile=dist/perf.cjs && node dist/perf.cjs",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.webview.json",
     "lint": "eslint .",
     "format": "prettier --write .",

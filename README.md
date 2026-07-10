@@ -8,6 +8,9 @@ leaves your computer: every model call goes to `127.0.0.1`.
 > **v1 scope:** macOS on Apple Silicon (M-series) only. Intel Macs, Windows, and
 > Linux are out of scope for this release. See [`docs/`](./docs) for the full spec.
 
+> **🧪 Private beta.** You're an early tester — thank you! Expect rough edges.
+> Please report anything you hit (see [Giving feedback](#giving-feedback-private-beta)).
+
 ---
 
 ## What you get
@@ -37,10 +40,42 @@ cloud account and no telemetry.
 
 ---
 
-## Install & run
+## Install (private beta)
 
-LocalPilot is not on the VS Code Marketplace yet (packaging is the final phase).
-For now, run it from source:
+LocalPilot ships as a `.vsix` file during the beta (it's not on the VS Code
+Marketplace yet). You'll be given a `localpilot-<version>.vsix`.
+
+**Install it, either way:**
+
+- **In VS Code:** open the Extensions view → the **⋯** (More Actions) menu →
+  **Install from VSIX…** → pick the file.
+- **In a terminal:** `code --install-extension localpilot-0.1.0.vsix`
+
+Then **reload VS Code** and open a project folder. No build step, no sign-in, no
+API key.
+
+### First run — guided setup
+
+The first time you open a folder, LocalPilot's **onboarding opens in the sidebar**
+and sets everything up for you:
+
+1. **Welcome** → click **Get Started**.
+2. **Hardware detection** — picks chat / autocomplete / embedding models to match
+   your chip and RAM.
+3. **Download models** — review the models + sizes, click **Download Models**.
+   The first download takes a few minutes (progress bar + time estimate).
+4. **Indexing** — your workspace is indexed so `@codebase` can search it.
+5. **Ready** → click **Start Coding**.
+
+It runs **once** per machine; after that, opening a folder is instant. If a
+download is interrupted, setup resumes where it left off. Detailed logs are in
+**View → Output → LocalPilot**.
+
+> Need to redo setup (e.g. you cleared your models)? Run **LocalPilot: Reset and
+> Re-run Setup** from the Command Palette — LocalPilot also auto-reruns setup if a
+> required model goes missing.
+
+### Run from source (developers)
 
 ```bash
 git clone https://github.com/shobhitsinha04/localpilot.git
@@ -49,23 +84,8 @@ npm install
 npm run build      # bundle to dist/extension.js
 ```
 
-Then open the folder in VS Code and press <kbd>F5</kbd> (**Run -> Run LocalPilot
-Extension**). This launches an Extension Development Host window with LocalPilot
-loaded.
-
-### First run
-
-On first activation LocalPilot will, automatically:
-
-1. Detect your hardware tier (chip / RAM / free disk / macOS version) and pick the
-   matching chat, autocomplete, and embedding models.
-2. Ensure Ollama is installed and running (installing/starting it if needed).
-3. Download the models it needs (this can take a few minutes the first time;
-   progress is logged to the **LocalPilot** Output channel).
-4. Index your open workspace so `@codebase` can answer questions about it.
-
-Open the **LocalPilot** Output channel (**View -> Output -> LocalPilot**) to watch
-setup progress and per-request timing.
+Open the folder in VS Code and press <kbd>F5</kbd> to launch an Extension
+Development Host with LocalPilot loaded.
 
 ---
 
@@ -108,6 +128,28 @@ downloads from the Ollama registry.
 - **First completion is slow** — the model is loading; it stays warm afterward.
 - **Known issues, fixes, and their caveats** are catalogued phase by phase in
   [`docs/ISSUES_AND_FIXES.md`](./docs/ISSUES_AND_FIXES.md).
+
+---
+
+## Giving feedback (private beta)
+
+Your feedback is the whole point of the beta — bug reports, confusion, and "this
+felt slow/awkward" are all useful.
+
+**Where:** open a
+[GitHub issue](https://github.com/shobhitsinha04/localpilot/issues).
+
+**What to include** (so we can act on it fast):
+
+- What you did and what you expected vs. what happened.
+- Your setup: macOS version, chip + RAM (e.g. M2 / 16 GB), LocalPilot version.
+- Which feature: autocomplete / Cmd+K / chat / `@codebase` / onboarding.
+- Relevant lines from the **LocalPilot** Output channel
+  (**View → Output → LocalPilot**) — it never contains your code, only setup and
+  timing logs.
+
+Since everything runs locally, we can't see anything unless you tell us — so
+concrete repro steps go a long way.
 
 ---
 

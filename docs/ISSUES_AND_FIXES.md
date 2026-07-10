@@ -325,6 +325,67 @@ Legend: **Issue → Fix → Caveat.** "Open" items are known issues still tracke
 
 ---
 
+## Phase 7 — Polish, Testing, and Private Beta  ·  *IN PROGRESS*
+
+1. **`.vsix` dropped the LanceDB native binary.** `.vscodeignore` excluded all of
+   `node_modules/**`, but `@lancedb/lancedb` is marked `external` in esbuild (a
+   platform-specific `.node` that can't be bundled), so the packaged extension
+   would crash on load.
+   **Fix:** keep `node_modules/@lancedb/**` + `node_modules/reflect-metadata/**`
+   in the package; verified the binary + KaTeX assets ship in
+   `localpilot-0.1.0.vsix` (`fa4c7a4`).
+   Caveat: only the darwin-arm64 binary is present (v1 scope); a cross-platform
+   build would need the other optional `@lancedb/lancedb-<platform>` packages.
+
+**Error-handling audit (pre-beta).** Systematic pass over every feature's failure
+paths. The codebase was already well-guarded (typed `OllamaError`, abort/timeout
+handling, corrupt-config → defaults, best-effort completions, index/embed errors
+caught at call sites). Three real gaps found and fixed:
+
+2. **Unhandled rejection from fire-and-forget config writes.** Onboarding
+   persisted resume checkpoints with `void config.update({ onboardingStep })`;
+   `config.update()` can reject (disk full / read-only home), producing an
+   unhandled promise rejection.
+   **Fix:** a `persistStep()` helper wraps the write with a `.catch()` that logs.
+   Caveat: on a failing write the checkpoint is simply lost (resume falls back a
+   step) — acceptable versus crashing.
+3. **CMD+K gave a generic error when Ollama was down / model missing.** It only
+   checked the model was *configured*, then failed mid-stream with "couldn't
+   complete that edit."
+   **Fix:** pre-flight `isRunning` + `hasModel` checks after the instruction, with
+   a specific message. Caveat: adds two fast local API calls per ⌘K invocation.
+4. **A couple of `void` chat-provider handlers could reject uncaught.**
+   `onReady()` (`config.load`) and `setAutocomplete()` (`config.update`).
+   **Fix:** wrapped both in try/catch that logs.
+
+**Performance testing (`npm run perf`, Tier 2 = M2 / 16GB).** A dev harness
+(`scripts/perf.ts`) drives the vscode-free services directly (real Ollama).
+Results:
+
+- **Indexing: ~5.8–6.8 files/s**, fully embedding-bound (~150–175ms per chunk).
+  500 synthetic files ≈ 87s; 1000 ≈ 147s. Extrapolated **300 files ≈ 52s → meets
+  ONBOARDING_FLOW.md's "300 files < 60s on Tier 2" target.** Real projects index
+  fast because junk is skipped (a Python project resolved to 10 files / 9 chunks
+  — `SKIP_DIRS` correctly excludes `venv`/`site-packages`).
+- **@codebase query latency: ~50–110ms avg** (embed query + vector search +
+  rerank). Snappy.
+- **Completion latency:** 1.5b (autocomplete) ~1.0–1.6s avg, with tail spikes to
+  ~3s under memory/thermal load; 7b (chat model) ~3.5s avg, p95 ~6s — far too
+  slow for inline text, which is exactly why autocomplete uses the smaller model.
+
+Conclusion: no beta blockers. Indexing meets the spec target; the one-time
+onboarding index of a large repo takes a couple of minutes (with a progress bar).
+
+**Open (deferred within Phase 7):**
+- **Indexing embedding-concurrency optimization — parked.** Indexing is
+  embedding-bound and embeds with limited concurrency (5 files in parallel,
+  chunks within a file sequential); raising concurrency could cut first-run index
+  time, but it's a one-time onboarding cost, so deferred as a nice-to-have.
+- Broader onboarding disk-full handling is heuristic (`isDiskSpaceError` on the
+  error text) rather than a proactive pre-download free-space check.
+
+---
+
 ## Cross-cutting themes
 
 - **Live-harness verification pays off.** The cosine-vs-L2 (P2 #1), embed-500

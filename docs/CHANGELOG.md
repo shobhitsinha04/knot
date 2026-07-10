@@ -9,6 +9,65 @@ the current state of the codebase before writing any new code.
 
 ---
 
+## Phase 7 — Polish, Testing, and Private Beta
+**Status:** Engineering approved by Judge Agent (private beta in progress)
+**Judge Score:** 28/30 (see JUDGE_SCORES.md)
+
+### What Was Built
+
+Phase 7 makes LocalPilot shippable to a private beta. (The phase's DoD — 10 real
+users — is the beta itself and remains in progress; this records the engineering
+prep, Judge-approved and merged so the beta `.vsix` is cut from a stable `main`.)
+
+**Onboarding polish (ONBOARDING_FLOW.md).** Resume-from-interrupted setup: the
+controller persists an `onboardingStep` checkpoint at each transition and, on the
+next launch, resumes (re-showing the Download Models gate if consent wasn't given,
+else continuing download/index straight through) instead of restarting at Welcome
+— re-running is idempotent (present models skip, Ollama resumes partial pulls).
+The three spec error states: Ollama install-permission failure → a manual
+`ollama.com/download` link (via a new https-, host-allowlisted `openExternal`
+webview message) + "I've installed it" retry; disk-full → a specific "not enough
+disk space" stop (`isDiskSpaceError`); no code files → the Ready screen notes
+`@codebase` has nothing to search yet.
+
+**Error-handling audit (pre-beta).** A systematic pass; the codebase was already
+well-guarded. Three real gaps fixed: fire-and-forget `config.update()` in the
+onboarding step-persistence could reject uncaught (disk full / read-only home) →
+a `persistStep()` helper wraps it with a logging `.catch()`; CMD+K only checked a
+model was configured, then failed mid-stream → adds `isRunning`/`hasModel`
+pre-flight with specific messages; `onReady()`/`setAutocomplete()` void handlers
+wrapped in try/catch.
+
+**Packaging (`.vsix`).** `.vscodeignore` keeps `node_modules/@lancedb/**` +
+`reflect-metadata/**` — `@lancedb/lancedb` is `external` in esbuild (a
+platform-specific `.node` that can't be bundled), so without this the packaged
+extension crashes on load. Added an MIT `LICENSE`, set `version 0.1.0`, added
+`repository`. Verified `localpilot-0.1.0.vsix` installs with the native binary +
+KaTeX assets. (Cross-platform builds would need the other
+`@lancedb/lancedb-<platform>` packages — Phase 8.)
+
+**Beta enablement.** README rewritten for beta users (install-from-vsix,
+onboarding walkthrough, feedback); GitHub issue templates (bug + feedback) as the
+feedback channel.
+
+**Performance testing.** A dev-only harness (`scripts/perf.ts`, `npm run perf`,
+excluded from the `.vsix`) drives the vscode-free services against real Ollama.
+Results (Tier 2, M2/16GB): indexing ~5.8–6.8 files/s (300 files ≈ 52s → meets the
+"300 files < 60s" target); `@codebase` query ~50–110ms; completion 1.5b ~1–1.6s,
+7b ~3.5s (confirming why autocomplete uses the smaller model). No beta blockers;
+the embedding-concurrency optimization is parked (one-time onboarding cost).
+
+166 Vitest tests (adds `formatEta`, `isDiskSpaceError`, `openExternal` parsing).
+
+### Deferred / open
+- **Recruit 10 beta users** + fix first-week beta bugs — the remaining Phase 7
+  DoD, human/reactive.
+- Proactive disk-full check; embedding-concurrency indexing optimization.
+- (Carried) `Reset and Re-run Setup` should also delete the LanceDB index — a
+  Phase 6 gap surfaced by the Judge.
+
+---
+
 ## Phase 6 — @codebase + Onboarding UI
 **Status:** Approved by Judge Agent
 **Judge Score:** 27/30 (see JUDGE_SCORES.md)

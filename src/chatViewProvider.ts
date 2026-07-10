@@ -67,6 +67,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         case "onboardingAction":
           void this.onboarding?.handleAction(msg.id);
           break;
+        case "openExternal":
+          // URL is validated https-only by parseWebviewMessage.
+          void vscode.env.openExternal(vscode.Uri.parse(msg.url));
+          break;
         case "sendMessage":
           void this.handleUserMessage(msg.text);
           break;
@@ -112,11 +116,15 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
    * is wired), otherwise initialise the chat UI.
    */
   private async onReady(): Promise<void> {
-    await this.config.load();
-    if (!this.config.get().onboardingComplete && this.onboarding) {
-      this.onboarding.begin();
-    } else {
-      await this.sendInit();
+    try {
+      await this.config.load();
+      if (!this.config.get().onboardingComplete && this.onboarding) {
+        this.onboarding.begin();
+      } else {
+        await this.sendInit();
+      }
+    } catch (err) {
+      this.logger.error("Failed to initialise the chat view", err);
     }
   }
 
@@ -132,8 +140,14 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
   /** Persist the autocomplete on/off switch; the provider reads it live. */
   private async setAutocomplete(enabled: boolean): Promise<void> {
-    await this.config.update({ inlineCompletionsEnabled: enabled });
-    this.logger.info(`Inline completions ${enabled ? "enabled" : "disabled"}.`);
+    try {
+      await this.config.update({ inlineCompletionsEnabled: enabled });
+      this.logger.info(
+        `Inline completions ${enabled ? "enabled" : "disabled"}.`,
+      );
+    } catch (err) {
+      this.logger.error("Failed to persist the autocomplete toggle", err);
+    }
   }
 
   private async handleUserMessage(text: string): Promise<void> {
@@ -354,6 +368,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       <div class="ob-eta" id="ob-eta"></div>
     </div>
     <button class="ob-action" id="ob-action" hidden></button>
+    <button class="ob-link" id="ob-link" hidden></button>
   </section>
 
   <header class="header">

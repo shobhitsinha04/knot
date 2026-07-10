@@ -33,6 +33,8 @@ export interface OnboardingView {
   /** A button to show (prompt/error/ready modes). */
   actionId?: OnboardingActionId;
   actionLabel?: string;
+  /** An external link to offer (e.g. manual Ollama download on install failure). */
+  link?: { label: string; url: string };
 }
 
 /** Messages the webview sends to the extension host. */
@@ -44,7 +46,8 @@ export type WebviewMessage =
   | { type: "restart" }
   | { type: "retry" }
   | { type: "setAutocomplete"; enabled: boolean }
-  | { type: "onboardingAction"; id: OnboardingActionId };
+  | { type: "onboardingAction"; id: OnboardingActionId }
+  | { type: "openExternal"; url: string };
 
 /** Messages the extension host sends to the webview. */
 export type HostMessage =
@@ -90,6 +93,21 @@ export function parseWebviewMessage(raw: unknown): WebviewMessage | null {
       return ids.includes(m.id as OnboardingActionId)
         ? { type: "onboardingAction", id: m.id as OnboardingActionId }
         : null;
+    }
+    case "openExternal": {
+      // The webview may only ask the host to open the sanctioned ollama.com
+      // pages (https, host-allowlisted) — defence in depth so a malformed or
+      // misused sender can't open an arbitrary site.
+      if (typeof m.url !== "string") return null;
+      try {
+        const u = new URL(m.url);
+        const allowed =
+          u.protocol === "https:" &&
+          (u.hostname === "ollama.com" || u.hostname.endsWith(".ollama.com"));
+        return allowed ? { type: "openExternal", url: m.url } : null;
+      } catch {
+        return null;
+      }
     }
     default:
       return null;

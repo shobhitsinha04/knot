@@ -14,6 +14,27 @@ Dimensions: **Spec** (Spec Compliance) · **Arch** (Architecture) ·
 
 ---
 
+## Phase 7 — Polish, Testing, and Private Beta
+
+| Run | Date       | Spec | Arch | Err | Priv | Qual | Test | Total | Status   |
+| --- | ---------- | ---- | ---- | --- | ---- | ---- | ---- | ----- | -------- |
+| 1   | 2026-07-10 | 5    | 5    | 4   | 5    | 5    | 4    | 28    | APPROVED |
+
+**Run 1 notes:** Approved cold at 28/30, no Critical findings. Judge ran the gates
+itself (typecheck / lint / format clean, 166 tests green). Verified Privacy
+directly (all `fetch` via `baseUrl` 127.0.0.1; only external URLs are the two
+sanctioned `ollama.com` ones; no telemetry). Two Minor findings. **Fixed before
+close:** `openExternal` accepted any `https://` URL → now host-allowlisted to
+`ollama.com` in the parser (with a test for the https-but-wrong-host case).
+**Deferred (already logged Phase 7 open items):** disk-full handling is a text
+heuristic rather than a proactive free-space check. **Observation (out of scope —
+untouched in Phase 7):** `Reset and Re-run Setup` clears the config flags but
+doesn't delete the LanceDB index the way ONBOARDING_FLOW.md describes — a Phase 6
+gap flagged for whoever closes it (reconcile limits the practical impact). Phase
+7's DoD ("10 real users") is the private beta itself and was correctly not judged.
+
+---
+
 ## Phase 6 — @codebase + Onboarding UI
 
 | Run | Date | Spec | Arch | Err | Priv | Qual | Test | Total | Status |
