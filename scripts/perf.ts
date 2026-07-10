@@ -61,7 +61,7 @@ async function generateWorkspace(n: number): Promise<string> {
     const dir = path.join(root, `pkg${Math.floor(i / 25)}`);
     await mkdir(dir, { recursive: true });
     const lines: string[] = [
-      `// Module ${i} — generated for the LocalPilot perf harness.`,
+      `// Module ${i} — generated for the Knot perf harness.`,
       `import { helper${i % 10} } from "./shared";`,
       "",
     ];
@@ -90,7 +90,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  console.log("== LocalPilot performance harness ==");
+  console.log("== Knot performance harness ==");
   console.log(
     `embed=${opts.embed}  complete=${opts.complete}  ` +
       `files=${opts.workspace ? "(real workspace)" : opts.files}\n`,

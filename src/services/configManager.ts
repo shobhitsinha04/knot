@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import * as path from "node:path";
 
-import type { Logger, LocalPilotConfig } from "../types";
+import type { Logger, KnotConfig } from "../types";
 
 /**
  * Reads and writes config.json in the extension's global storage directory.
@@ -12,7 +12,7 @@ import type { Logger, LocalPilotConfig } from "../types";
  */
 export class ConfigManager {
   private readonly configPath: string;
-  private cache?: LocalPilotConfig;
+  private cache?: KnotConfig;
 
   constructor(
     private readonly storageDir: string,
@@ -22,7 +22,7 @@ export class ConfigManager {
   }
 
   /** The Phase 1 config schema with safe initial values. */
-  static defaults(): LocalPilotConfig {
+  static defaults(): KnotConfig {
     return {
       onboardingComplete: false,
       onboardingStep: 0,
@@ -39,10 +39,10 @@ export class ConfigManager {
    * Load config.json. Returns defaults if the file is missing. A corrupt file
    * is logged and replaced with defaults rather than crashing activation.
    */
-  async load(): Promise<LocalPilotConfig> {
+  async load(): Promise<KnotConfig> {
     try {
       const raw = await readFile(this.configPath, "utf8");
-      const parsed = JSON.parse(raw) as Partial<LocalPilotConfig>;
+      const parsed = JSON.parse(raw) as Partial<KnotConfig>;
       this.cache = { ...ConfigManager.defaults(), ...parsed };
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
@@ -57,14 +57,14 @@ export class ConfigManager {
   }
 
   /** Persist a full config object, creating the storage dir if needed. */
-  async save(config: LocalPilotConfig): Promise<void> {
+  async save(config: KnotConfig): Promise<void> {
     await mkdir(this.storageDir, { recursive: true });
     await writeFile(this.configPath, JSON.stringify(config, null, 2), "utf8");
     this.cache = config;
   }
 
   /** Merge a partial patch into the current config and persist it. */
-  async update(patch: Partial<LocalPilotConfig>): Promise<LocalPilotConfig> {
+  async update(patch: Partial<KnotConfig>): Promise<KnotConfig> {
     const current = this.cache ?? (await this.load());
     const next = { ...current, ...patch };
     await this.save(next);
@@ -72,7 +72,7 @@ export class ConfigManager {
   }
 
   /** The last loaded/saved config, or defaults if nothing is cached yet. */
-  get(): LocalPilotConfig {
+  get(): KnotConfig {
     return this.cache ?? ConfigManager.defaults();
   }
 }

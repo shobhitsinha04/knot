@@ -1,6 +1,6 @@
 {
-  "name": "localpilot",
-  "displayName": "LocalPilot",
+  "name": "knot",
+  "displayName": "Knot",
   "description": "Zero-config, fully local AI coding assistant for VS Code. Autocomplete, chat, and codebase search powered by Ollama — nothing ever leaves your machine.",
   "version": "0.1.0",
   "publisher": "localpilot",
@@ -8,7 +8,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/shobhitsinha04/localpilot.git"
+    "url": "https://github.com/shobhitsinha04/knot.git"
   },
   "engines": {
     "vscode": "^1.85.0",
@@ -36,7 +36,7 @@
       "activitybar": [
         {
           "id": "localpilot",
-          "title": "LocalPilot",
+          "title": "Knot",
           "icon": "media/icon.svg"
         }
       ]
@@ -53,31 +53,31 @@
     "commands": [
       {
         "command": "localpilot.helloWorld",
-        "title": "LocalPilot: Hello World"
+        "title": "Knot: Hello World"
       },
       {
         "command": "localpilot.runSmokeTest",
-        "title": "LocalPilot: Run Phase 1 Smoke Test"
+        "title": "Knot: Run Phase 1 Smoke Test"
       },
       {
         "command": "localpilot.editSelection",
-        "title": "LocalPilot: Edit Selection"
+        "title": "Knot: Edit Selection"
       },
       {
         "command": "localpilot.acceptEdit",
-        "title": "LocalPilot: Accept Edit"
+        "title": "Knot: Accept Edit"
       },
       {
         "command": "localpilot.rejectEdit",
-        "title": "LocalPilot: Reject Edit"
+        "title": "Knot: Reject Edit"
       },
       {
         "command": "localpilot.rebuildIndex",
-        "title": "LocalPilot: Rebuild Index"
+        "title": "Knot: Rebuild Index"
       },
       {
         "command": "localpilot.resetSetup",
-        "title": "LocalPilot: Reset and Re-run Setup"
+        "title": "Knot: Reset and Re-run Setup"
       }
     ],
     "keybindings": [

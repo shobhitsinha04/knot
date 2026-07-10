@@ -38,12 +38,12 @@ let completionProviderRegistered = false;
 let rebuildInFlight = false;
 
 export function activate(context: vscode.ExtensionContext): void {
-  const channel = vscode.window.createOutputChannel("LocalPilot");
+  const channel = vscode.window.createOutputChannel("Knot");
   context.subscriptions.push(channel);
   const logger = createLogger(channel);
   // Heartbeat: a guaranteed first line so the Output channel is never blank when
   // the extension activates — confirms activation ran and logging works.
-  logger.info("LocalPilot activating.");
+  logger.info("Knot activating.");
 
   // Create the service synchronously here (not inside the async smoke test) so
   // deactivate() can always stop the `ollama serve` process we may have spawned.
@@ -104,7 +104,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand("localpilot.helloWorld", () => {
-      vscode.window.showInformationMessage("Hello World from LocalPilot!");
+      vscode.window.showInformationMessage("Hello World from Knot!");
     }),
     vscode.commands.registerCommand("localpilot.runSmokeTest", () => {
       void runSmokeTest(
@@ -211,7 +211,7 @@ async function runSmokeTest(
   }
   smokeTestInFlight = true;
   channel.show(true);
-  logger.info("LocalPilot Phase 1 smoke test starting...");
+  logger.info("Knot Phase 1 smoke test starting...");
 
   try {
     await config.load();
@@ -222,9 +222,9 @@ async function runSmokeTest(
 
     if (!hw.supported) {
       const reason =
-        hw.unsupportedReason ?? "LocalPilot v1 supports Apple Silicon only.";
+        hw.unsupportedReason ?? "Knot v1 supports Apple Silicon only.";
       logger.warn(reason);
-      void vscode.window.showWarningMessage(`LocalPilot: ${reason}`);
+      void vscode.window.showWarningMessage(`Knot: ${reason}`);
       return;
     }
 
@@ -324,11 +324,11 @@ async function runSmokeTest(
     // onboarding UI that drives this interactively lands in WP2 PR B; for now
     // setup runs headlessly here, exactly as before.)
     await config.update({ onboardingComplete: true });
-    logger.info("LocalPilot setup complete.");
+    logger.info("Knot setup complete.");
   } catch (err) {
     logger.error("Phase 1 smoke test failed", err);
     void vscode.window.showErrorMessage(
-      "LocalPilot smoke test failed — see the LocalPilot output channel for details.",
+      "Knot smoke test failed — see the Knot output channel for details.",
     );
   } finally {
     smokeTestInFlight = false;
@@ -425,7 +425,7 @@ async function ensureReady(
   config: ConfigManager,
   contextService: ContextService | undefined,
 ): Promise<void> {
-  logger.info("LocalPilot ready — onboarding already complete.");
+  logger.info("Knot ready — onboarding already complete.");
   try {
     if (!(await ollama.isRunning())) {
       logger.info("Starting Ollama daemon...");
@@ -549,7 +549,7 @@ async function recordIndexState(
 
 /**
  * Force a clean, full rebuild of the workspace index (drop + re-index
- * everything), invoked via the "LocalPilot: Rebuild Index" command. Activation
+ * everything), invoked via the "Knot: Rebuild Index" command. Activation
  * uses an incremental reconcile, which leaves an unchanged file alone — so it
  * can't collapse duplicate chunks left over from before the append-only bug was
  * fixed. This command is the recovery path: indexWorkspace drops the table
@@ -564,14 +564,14 @@ async function runForceRebuild(
 ): Promise<void> {
   if (rebuildInFlight) {
     void vscode.window.showInformationMessage(
-      "LocalPilot: an index rebuild is already running.",
+      "Knot: an index rebuild is already running.",
     );
     return;
   }
 
   if (!contextService) {
     void vscode.window.showWarningMessage(
-      "LocalPilot: open a workspace folder before rebuilding the index.",
+      "Knot: open a workspace folder before rebuilding the index.",
     );
     return;
   }
@@ -585,7 +585,7 @@ async function runForceRebuild(
     await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
-        title: "LocalPilot: rebuilding index…",
+        title: "Knot: rebuilding index…",
         cancellable: false,
       },
       async (report) => {
@@ -607,7 +607,7 @@ async function runForceRebuild(
           `Index rebuilt: ${stats.fileCount} files, ${stats.chunkCount} chunks.`,
         );
         void vscode.window.showInformationMessage(
-          `LocalPilot: index rebuilt — ${stats.fileCount} files, ` +
+          `Knot: index rebuilt — ${stats.fileCount} files, ` +
             `${stats.chunkCount} chunks.`,
         );
       },
@@ -615,7 +615,7 @@ async function runForceRebuild(
   } catch (err) {
     logger.error("Index rebuild failed", err);
     void vscode.window.showErrorMessage(
-      "LocalPilot: index rebuild failed — see the LocalPilot output channel.",
+      "Knot: index rebuild failed — see the Knot output channel.",
     );
   } finally {
     rebuildInFlight = false;
@@ -671,8 +671,8 @@ async function registerCompletionProvider(
     vscode.StatusBarAlignment.Right,
     100,
   );
-  statusBar.text = "$(loading~spin) LocalPilot";
-  statusBar.tooltip = "LocalPilot is generating a completion…";
+  statusBar.text = "$(loading~spin) Knot";
+  statusBar.tooltip = "Knot is generating a completion…";
   context.subscriptions.push(
     statusBar,
     vscode.languages.registerInlineCompletionItemProvider(
