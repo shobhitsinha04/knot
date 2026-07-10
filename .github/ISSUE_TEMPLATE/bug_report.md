@@ -6,7 +6,7 @@ labels: bug, beta
 ---
 
 <!--
-Thanks for testing LocalPilot! Everything runs on your machine, so we can't see
+Thanks for testing Knot! Everything runs on your machine, so we can't see
 anything unless you tell us — concrete steps help a lot.
 -->
 
@@ -28,13 +28,13 @@ anything unless you tell us — concrete steps help a lot.
 
 - macOS version:
 - Chip + RAM (e.g. M2 / 16 GB):
-- LocalPilot version:
+- Knot version:
 - VS Code version:
 
-## LocalPilot Output logs
+## Knot Output logs
 
 <!--
-Paste relevant lines from View → Output → LocalPilot. These contain only setup
+Paste relevant lines from View → Output → Knot. These contain only setup
 and timing logs — never your code. Redact anything you're unsure about.
 -->
 

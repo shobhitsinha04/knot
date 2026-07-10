@@ -20,4 +20,4 @@ feature you wish existed, or a rough edge that isn't quite a bug.
 
 - macOS version:
 - Chip + RAM (e.g. M2 / 16 GB):
-- LocalPilot version:
+- Knot version:

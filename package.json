@@ -5,6 +5,7 @@
   "version": "0.1.0",
   "publisher": "localpilot",
   "private": true,
+  "icon": "media/knot.jpg",
   "license": "MIT",
   "repository": {
     "type": "git",
