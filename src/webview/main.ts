@@ -114,6 +114,7 @@ const obProgress = document.getElementById("ob-progress") as HTMLElement;
 const obBarFill = document.getElementById("ob-bar-fill") as HTMLElement;
 const obEta = document.getElementById("ob-eta") as HTMLElement;
 const obAction = document.getElementById("ob-action") as HTMLButtonElement;
+const obLink = document.getElementById("ob-link") as HTMLButtonElement;
 
 // --- state ------------------------------------------------------------------
 let generating = false;
@@ -470,6 +471,14 @@ function renderOnboarding(v: OnboardingView): void {
   } else {
     obAction.hidden = true;
   }
+
+  if (v.link) {
+    obLink.hidden = false;
+    obLink.textContent = v.link.label;
+    obLink.dataset.url = v.link.url;
+  } else {
+    obLink.hidden = true;
+  }
 }
 
 obAction.addEventListener("click", () => {
@@ -477,6 +486,11 @@ obAction.addEventListener("click", () => {
   if (!id) return;
   obAction.disabled = true; // prevent double-trigger on slow steps
   post({ type: "onboardingAction", id } as WebviewMessage);
+});
+
+obLink.addEventListener("click", () => {
+  const url = obLink.dataset.url;
+  if (url) post({ type: "openExternal", url });
 });
 
 // --- host → webview ---------------------------------------------------------

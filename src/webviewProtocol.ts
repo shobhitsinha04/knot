@@ -33,6 +33,8 @@ export interface OnboardingView {
   /** A button to show (prompt/error/ready modes). */
   actionId?: OnboardingActionId;
   actionLabel?: string;
+  /** An external link to offer (e.g. manual Ollama download on install failure). */
+  link?: { label: string; url: string };
 }
 
 /** Messages the webview sends to the extension host. */
@@ -44,7 +46,8 @@ export type WebviewMessage =
   | { type: "restart" }
   | { type: "retry" }
   | { type: "setAutocomplete"; enabled: boolean }
-  | { type: "onboardingAction"; id: OnboardingActionId };
+  | { type: "onboardingAction"; id: OnboardingActionId }
+  | { type: "openExternal"; url: string };
 
 /** Messages the extension host sends to the webview. */
 export type HostMessage =
@@ -91,6 +94,11 @@ export function parseWebviewMessage(raw: unknown): WebviewMessage | null {
         ? { type: "onboardingAction", id: m.id as OnboardingActionId }
         : null;
     }
+    case "openExternal":
+      // Only https URLs may be opened from the webview (defence in depth).
+      return typeof m.url === "string" && m.url.startsWith("https://")
+        ? { type: "openExternal", url: m.url }
+        : null;
     default:
       return null;
   }

@@ -21,6 +21,9 @@ export const OLLAMA_BINARY_PATHS = [
 // sanctioned network exception to the all-local rule.
 export const OLLAMA_INSTALL_SCRIPT_URL = "https://ollama.com/install.sh";
 
+// Shown to the user when automatic install fails (manual fallback link).
+export const OLLAMA_DOWNLOAD_URL = "https://ollama.com/download";
+
 // ----------------------------------------------------------------------------
 // Hardware tiers (HARDWARE_PROFILES.md)
 // ----------------------------------------------------------------------------

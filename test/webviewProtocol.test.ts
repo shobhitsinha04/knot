@@ -58,6 +58,22 @@ describe("parseWebviewMessage", () => {
     expect(parseWebviewMessage({ type: "onboardingAction" })).toBeNull();
   });
 
+  it("accepts openExternal only for https URLs", () => {
+    expect(
+      parseWebviewMessage({
+        type: "openExternal",
+        url: "https://ollama.com/download",
+      }),
+    ).toEqual({ type: "openExternal", url: "https://ollama.com/download" });
+    expect(
+      parseWebviewMessage({ type: "openExternal", url: "http://evil.test" }),
+    ).toBeNull();
+    expect(
+      parseWebviewMessage({ type: "openExternal", url: "file:///etc/passwd" }),
+    ).toBeNull();
+    expect(parseWebviewMessage({ type: "openExternal" })).toBeNull();
+  });
+
   it("rejects unknown types and non-object input", () => {
     expect(parseWebviewMessage({ type: "evil" })).toBeNull();
     expect(parseWebviewMessage(null)).toBeNull();

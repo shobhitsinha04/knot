@@ -1,8 +1,9 @@
+import { OLLAMA_DOWNLOAD_URL } from "./constants";
 import { HardwareDetector, modelsForTier } from "./services/hardwareDetector";
 import type { ConfigManager } from "./services/configManager";
 import type { ContextService } from "./contextService";
 import type { OllamaService } from "./services/ollamaService";
-import type { Logger, ModelSet } from "./types";
+import type { HardwareProfile, Logger, ModelSet } from "./types";
 import type { OnboardingActionId, OnboardingView } from "./webviewProtocol";
 
 // Drives the first-run onboarding flow rendered in the chat webview (Phase 6
@@ -33,6 +34,17 @@ export function formatEta(
   return `about ${secs}s remaining`;
 }
 
+/** Heuristic: does this error look like the disk filled up during a download? */
+export function isDiskSpaceError(err: unknown): boolean {
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  return (
+    msg.includes("no space") ||
+    msg.includes("disk") ||
+    msg.includes("enospc") ||
+    msg.includes("space left")
+  );
+}
+
 /** Rough on-disk sizes for the download consent screen (ONBOARDING_FLOW.md). */
 const MODEL_SIZES: Record<string, string> = {
   "qwen2.5-coder:1.5b": "~1 GB",
@@ -58,27 +70,32 @@ export interface OnboardingDeps {
 
 type Phase = "welcome" | "models" | "downloading" | "ready" | "running";
 
+/** Persisted onboarding-step checkpoints, for resuming an interrupted setup. */
+const STEP_WELCOME = 0;
+const STEP_MODELS = 2; // hardware detected, awaiting download consent
+const STEP_DOWNLOADING = 3; // consented; downloading/indexing
+const STEP_READY = 6; // everything done, awaiting "Start Coding"
+
 export class OnboardingController {
   private phase: Phase = "welcome";
+  private hw?: HardwareProfile;
   private models?: ModelSet;
 
   constructor(private readonly deps: OnboardingDeps) {}
 
-  /** Show the welcome screen (called when the webview is ready, if not onboarded). */
+  /**
+   * Entry point when the webview is ready (and setup isn't complete). Resumes
+   * from the last persisted step rather than always restarting at Welcome
+   * (ONBOARDING_FLOW.md §"Resuming Interrupted Onboarding").
+   */
   begin(): void {
-    this.phase = "welcome";
-    this.deps.post({
-      step: 0,
-      total: TOTAL_STEPS,
-      title: "Welcome to LocalPilot",
-      detail:
-        "We'll set everything up for you — about 5–15 minutes, mostly the " +
-        "one-time model download. After that it all runs offline, and nothing " +
-        "you type ever leaves your machine.",
-      mode: "prompt",
-      actionId: "getStarted",
-      actionLabel: "Get Started",
-    });
+    const step = this.deps.config.get().onboardingStep ?? STEP_WELCOME;
+    if (step <= STEP_WELCOME) {
+      this.showWelcome();
+    } else {
+      this.deps.logger.info(`Resuming onboarding from step ${step}.`);
+      void this.resume(step);
+    }
   }
 
   /** Handle a button press from the webview. */
@@ -96,67 +113,134 @@ export class OnboardingController {
 
   // --- Steps ---------------------------------------------------------------
 
-  /** Steps 1–2: hardware detection → model-selection consent screen. */
+  private showWelcome(): void {
+    this.phase = "welcome";
+    void this.deps.config.update({ onboardingStep: STEP_WELCOME });
+    this.deps.post({
+      step: 0,
+      total: TOTAL_STEPS,
+      title: "Welcome to LocalPilot",
+      detail:
+        "We'll set everything up for you — about 5–15 minutes, mostly the " +
+        "one-time model download. After that it all runs offline, and nothing " +
+        "you type ever leaves your machine.",
+      mode: "prompt",
+      actionId: "getStarted",
+      actionLabel: "Get Started",
+    });
+  }
+
+  /**
+   * Resume an interrupted setup. Re-detecting hardware and re-running downloads
+   * is safe and cheap: present models are skipped (hasModel) and Ollama resumes
+   * partial downloads. Before the download consent we re-show that gate; after
+   * it, we continue straight through (the user already consented).
+   */
+  private async resume(step: number): Promise<void> {
+    this.phase = "running";
+    this.info(step, "Resuming setup…", "Picking up where you left off.");
+    try {
+      if (!(await this.detect())) return; // terminal (e.g. unsupported hardware)
+      if (step < STEP_DOWNLOADING) {
+        this.postModelsConsent();
+      } else {
+        await this.runDownloadAndIndex();
+      }
+    } catch (err) {
+      this.deps.logger.error("Onboarding resume failed", err);
+      this.error(step, "Setup hit a snag", "Couldn't resume setup.", true);
+    }
+  }
+
+  /** Step 0 → 2: detect hardware, then show the model-selection consent screen. */
   private async runDetectAndSelect(): Promise<void> {
     this.phase = "running";
     try {
-      this.info(
-        1,
-        "Detecting your hardware…",
-        "Checking memory, disk, and chip.",
-      );
-      const hw = await new HardwareDetector(this.deps.logger).detect();
-      if (!hw.supported) {
-        this.error(
-          1,
-          "Unsupported hardware",
-          hw.unsupportedReason ??
-            "LocalPilot v1 supports Apple Silicon only. Intel support is coming.",
-          false, // no retry — this is terminal
-        );
-        return;
-      }
-
-      const models = modelsForTier(hw.tier);
-      this.models = models;
-      await this.deps.config.update({
-        tier: hw.tier,
-        chatModel: models.chat,
-        autocompleteModel: models.autocomplete,
-        embeddingModel: models.embedding,
-      });
-
-      this.phase = "models";
-      this.deps.post({
-        step: 2,
-        total: TOTAL_STEPS,
-        title: "Models selected for your machine",
-        detail:
-          `Detected ${hw.chipBrand} · ${hw.totalMemoryGB}GB (Tier ${hw.tier}).\n\n` +
-          `• Chat: ${models.chat} (${MODEL_SIZES[models.chat] ?? "?"})\n` +
-          `• Autocomplete: ${models.autocomplete} (${MODEL_SIZES[models.autocomplete] ?? "?"})\n` +
-          `• Embeddings: ${models.embedding} (${MODEL_SIZES[models.embedding] ?? "?"})`,
-        mode: "prompt",
-        actionId: "downloadModels",
-        actionLabel: "Download Models",
-      });
+      if (await this.detect()) this.postModelsConsent();
     } catch (err) {
       this.deps.logger.error("Onboarding hardware step failed", err);
       this.error(1, "Setup hit a snag", "Couldn't detect your hardware.", true);
     }
   }
 
+  /** Detect hardware + pick models. Returns false (after posting) if terminal. */
+  private async detect(): Promise<boolean> {
+    this.info(
+      1,
+      "Detecting your hardware…",
+      "Checking memory, disk, and chip.",
+    );
+    const hw = await new HardwareDetector(this.deps.logger).detect();
+    if (!hw.supported) {
+      this.error(
+        1,
+        "Unsupported hardware",
+        hw.unsupportedReason ??
+          "LocalPilot v1 supports Apple Silicon only. Intel support is coming.",
+        false, // terminal — no retry
+      );
+      return false;
+    }
+    this.hw = hw;
+    this.models = modelsForTier(hw.tier);
+    await this.deps.config.update({
+      tier: hw.tier,
+      chatModel: this.models.chat,
+      autocompleteModel: this.models.autocomplete,
+      embeddingModel: this.models.embedding,
+      onboardingStep: 1,
+    });
+    return true;
+  }
+
+  private postModelsConsent(): void {
+    if (!this.hw || !this.models) return;
+    this.phase = "models";
+    void this.deps.config.update({ onboardingStep: STEP_MODELS });
+    const m = this.models;
+    this.deps.post({
+      step: 2,
+      total: TOTAL_STEPS,
+      title: "Models selected for your machine",
+      detail:
+        `Detected ${this.hw.chipBrand} · ${this.hw.totalMemoryGB}GB ` +
+        `(Tier ${this.hw.tier}).\n\n` +
+        `• Chat: ${m.chat} (${MODEL_SIZES[m.chat] ?? "?"})\n` +
+        `• Autocomplete: ${m.autocomplete} (${MODEL_SIZES[m.autocomplete] ?? "?"})\n` +
+        `• Embeddings: ${m.embedding} (${MODEL_SIZES[m.embedding] ?? "?"})`,
+      mode: "prompt",
+      actionId: "downloadModels",
+      actionLabel: "Download Models",
+    });
+  }
+
   /** Steps 3–5: ensure Ollama, download models, index the workspace. */
   private async runDownloadAndIndex(): Promise<void> {
     if (!this.models) return this.runDetectAndSelect();
     this.phase = "downloading";
+    void this.deps.config.update({ onboardingStep: STEP_DOWNLOADING });
     const { ollama, contextService } = this.deps;
-    try {
-      // Step 3 — Ollama install + run.
-      if (!ollama.isInstalled()) {
-        this.info(3, "Installing Ollama…", "This takes about 30 seconds.");
+
+    // Step 3 — install Ollama. A permission failure gets a manual-install link
+    // + "I've installed it" retry (ONBOARDING_FLOW.md Step 3 error state).
+    if (!ollama.isInstalled()) {
+      this.info(3, "Installing Ollama…", "This takes about 30 seconds.");
+      try {
         await ollama.install();
+      } catch (err) {
+        this.deps.logger.error("Onboarding: Ollama install failed", err);
+        this.errorWithLink(
+          3,
+          "Couldn't install Ollama automatically",
+          "This usually needs permission. Install Ollama manually, then come " +
+            "back and click below.",
+          "I've installed it",
+          { label: "Open ollama.com/download", url: OLLAMA_DOWNLOAD_URL },
+        );
+        return;
       }
+    }
+    try {
       if (!(await ollama.isRunning())) {
         this.info(3, "Starting Ollama…", "Bringing up the local model server.");
         await ollama.start();
@@ -168,6 +252,7 @@ export class OnboardingController {
       await this.pull(this.models.embedding, "embedding model");
 
       // Step 5 — index the workspace.
+      let fileCount = 0;
       if (contextService) {
         this.info(
           5,
@@ -186,43 +271,66 @@ export class OnboardingController {
             percent,
           });
         });
+        fileCount = stats.fileCount;
         this.deps.logger.info(
           `Onboarding indexed ${stats.fileCount} files, ${stats.chunkCount} chunks.`,
         );
       }
 
-      // Step 6 — ready.
-      this.phase = "ready";
-      this.deps.post({
-        step: 6,
-        total: TOTAL_STEPS,
-        title: "LocalPilot is ready",
-        detail:
-          "Try it:\n• Pause while typing for inline autocomplete\n" +
-          "• Ask a question here in chat\n" +
-          "• Type @codebase before a question to search your project\n\n" +
-          "Everything runs on your machine.",
-        mode: "ready",
-        actionId: "startCoding",
-        actionLabel: "Start Coding",
-      });
+      this.showReady(fileCount);
     } catch (err) {
       this.deps.logger.error("Onboarding download/index step failed", err);
-      this.error(
-        4,
-        "Setup hit a snag",
-        "A download or indexing step failed. You can retry — Ollama resumes " +
-          "partial downloads.",
-        true,
-      );
+      if (isDiskSpaceError(err)) {
+        // Step 4 disk-full error state — explain and stop (no blind retry).
+        this.error(
+          4,
+          "Not enough disk space",
+          "Downloading the models ran out of disk space. Free up a few GB " +
+            "(the models need several GB) and re-run setup.",
+          false,
+        );
+      } else {
+        this.error(
+          4,
+          "Setup hit a snag",
+          "A download or indexing step failed. You can retry — Ollama resumes " +
+            "partial downloads where it left off.",
+          true,
+        );
+      }
     }
+  }
+
+  /** Step 6 — the ready screen, noting when no code files were found. */
+  private showReady(fileCount: number): void {
+    this.phase = "ready";
+    void this.deps.config.update({ onboardingStep: STEP_READY });
+    const noFiles =
+      fileCount === 0
+        ? "No code files were found here, so @codebase has nothing to search " +
+          "yet — chat still works.\n\n"
+        : "";
+    this.deps.post({
+      step: 6,
+      total: TOTAL_STEPS,
+      title: "LocalPilot is ready",
+      detail:
+        noFiles +
+        "Try it:\n• Pause while typing for inline autocomplete\n" +
+        "• Ask a question here in chat\n" +
+        "• Type @codebase before a question to search your project\n\n" +
+        "Everything runs on your machine.",
+      mode: "ready",
+      actionId: "startCoding",
+      actionLabel: "Start Coding",
+    });
   }
 
   /** Step 6 → done: persist completion, light up features, show chat. */
   private async finish(): Promise<void> {
     await this.deps.config.update({
       onboardingComplete: true,
-      onboardingStep: 6,
+      onboardingStep: STEP_READY,
     });
     this.deps.logger.info("Onboarding complete.");
     try {
@@ -283,6 +391,26 @@ export class OnboardingController {
       mode: "error",
       actionId: retry ? "retry" : undefined,
       actionLabel: retry ? "Try Again" : undefined,
+    });
+  }
+
+  /** Error screen with a retry button plus an external link (manual install). */
+  private errorWithLink(
+    step: number,
+    title: string,
+    detail: string,
+    retryLabel: string,
+    link: { label: string; url: string },
+  ): void {
+    this.deps.post({
+      step,
+      total: TOTAL_STEPS,
+      title,
+      detail,
+      mode: "error",
+      actionId: "retry",
+      actionLabel: retryLabel,
+      link,
     });
   }
 

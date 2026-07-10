@@ -67,6 +67,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         case "onboardingAction":
           void this.onboarding?.handleAction(msg.id);
           break;
+        case "openExternal":
+          // URL is validated https-only by parseWebviewMessage.
+          void vscode.env.openExternal(vscode.Uri.parse(msg.url));
+          break;
         case "sendMessage":
           void this.handleUserMessage(msg.text);
           break;
@@ -354,6 +358,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       <div class="ob-eta" id="ob-eta"></div>
     </div>
     <button class="ob-action" id="ob-action" hidden></button>
+    <button class="ob-link" id="ob-link" hidden></button>
   </section>
 
   <header class="header">

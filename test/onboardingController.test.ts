@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatEta } from "../src/onboardingController";
+import { formatEta, isDiskSpaceError } from "../src/onboardingController";
 
 describe("formatEta", () => {
   it("returns undefined before any progress or once complete", () => {
@@ -25,5 +25,22 @@ describe("formatEta", () => {
   it("never reports less than 5 seconds remaining", () => {
     // 10s elapsed at 99% → ~0.1s remaining → floored to 5s.
     expect(formatEta(10_000, 99)).toBe("about 5s remaining");
+  });
+});
+
+describe("isDiskSpaceError", () => {
+  it("detects disk/space-related failures", () => {
+    expect(
+      isDiskSpaceError(new Error("write failed: no space left on device")),
+    ).toBe(true);
+    expect(isDiskSpaceError(new Error("ENOSPC: no space left"))).toBe(true);
+    expect(isDiskSpaceError(new Error("not enough disk space"))).toBe(true);
+    expect(isDiskSpaceError("No Space Left")).toBe(true);
+  });
+
+  it("ignores unrelated failures", () => {
+    expect(isDiskSpaceError(new Error("connection refused"))).toBe(false);
+    expect(isDiskSpaceError(new Error("model not found"))).toBe(false);
+    expect(isDiskSpaceError(undefined)).toBe(false);
   });
 });
