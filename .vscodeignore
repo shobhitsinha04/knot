@@ -6,6 +6,8 @@
 src/**
 test/**
 docs/**
+scripts/**
+dist/perf.cjs
 *.vsix
 # Exclude node_modules EXCEPT the LanceDB native binary + its runtime dep:
 # @lancedb/lancedb is marked external in esbuild (a platform-specific .node that

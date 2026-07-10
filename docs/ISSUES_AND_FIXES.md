@@ -358,9 +358,29 @@ caught at call sites). Three real gaps found and fixed:
    `onReady()` (`config.load`) and `setAutocomplete()` (`config.update`).
    **Fix:** wrapped both in try/catch that logs.
 
+**Performance testing (`npm run perf`, Tier 2 = M2 / 16GB).** A dev harness
+(`scripts/perf.ts`) drives the vscode-free services directly (real Ollama).
+Results:
+
+- **Indexing: ~5.8–6.8 files/s**, fully embedding-bound (~150–175ms per chunk).
+  500 synthetic files ≈ 87s; 1000 ≈ 147s. Extrapolated **300 files ≈ 52s → meets
+  ONBOARDING_FLOW.md's "300 files < 60s on Tier 2" target.** Real projects index
+  fast because junk is skipped (a Python project resolved to 10 files / 9 chunks
+  — `SKIP_DIRS` correctly excludes `venv`/`site-packages`).
+- **@codebase query latency: ~50–110ms avg** (embed query + vector search +
+  rerank). Snappy.
+- **Completion latency:** 1.5b (autocomplete) ~1.0–1.6s avg, with tail spikes to
+  ~3s under memory/thermal load; 7b (chat model) ~3.5s avg, p95 ~6s — far too
+  slow for inline text, which is exactly why autocomplete uses the smaller model.
+
+Conclusion: no beta blockers. Indexing meets the spec target; the one-time
+onboarding index of a large repo takes a couple of minutes (with a progress bar).
+
 **Open (deferred within Phase 7):**
-- Performance testing (index a 500-file repo) and completion-latency testing
-  across hardware tiers — not yet run.
+- **Indexing embedding-concurrency optimization — parked.** Indexing is
+  embedding-bound and embeds with limited concurrency (5 files in parallel,
+  chunks within a file sequential); raising concurrency could cut first-run index
+  time, but it's a one-time onboarding cost, so deferred as a nice-to-have.
 - Broader onboarding disk-full handling is heuristic (`isDiskSpaceError` on the
   error text) rather than a proactive pre-download free-space check.
 
