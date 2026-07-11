@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
-  - name: LocalPilot docs
+  - name: Knot docs
     url: https://github.com/shobhitsinha04/knot/tree/main/docs
     about: Product specs, decisions, and the phase-by-phase issue/fix log.
