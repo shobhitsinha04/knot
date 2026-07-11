@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="media/knot-logo.png" alt="Knot" width="160" />
+  <img src="media/knot-logo-long.jpg" alt="Knot" width="480" />
 </p>
-
-# Knot
 
 <p align="center">
   <a href="https://marketplace.visualstudio.com/items?itemName=freshgoldfish.knot-ai"><img src="https://img.shields.io/visual-studio-marketplace/v/freshgoldfish.knot-ai?label=Marketplace&color=7c6af7" alt="VS Code Marketplace version" /></a>
@@ -14,6 +12,12 @@ Zero-config, fully local AI coding assistant for VS Code — **Tab autocomplete*
 **Cmd+K inline editing**, **sidebar chat**, and **`@codebase` search**, all powered by
 [Ollama](https://ollama.com) running on your own machine. Nothing you write ever
 leaves your computer: every model call goes to `127.0.0.1`.
+
+Knot brings Copilot-style assistance right into your editor without the cloud —
+no account, no API key, and no telemetry. On first run it detects your hardware,
+pulls right-sized models to match your RAM, and indexes your project so answers
+stay grounded in your actual code. Open a folder and start typing; there's
+nothing else to configure.
 
 > **v1 scope:** macOS on Apple Silicon (M-series) only. Intel Macs, Windows, and
 > Linux are out of scope for this release. See [`docs/`](./docs) for the full spec.
