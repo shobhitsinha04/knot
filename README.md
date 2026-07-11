@@ -12,9 +12,6 @@ leaves your computer: every model call goes to `127.0.0.1`.
 > **v1 scope:** macOS on Apple Silicon (M-series) only. Intel Macs, Windows, and
 > Linux are out of scope for this release. See [`docs/`](./docs) for the full spec.
 
-> **🧪 Private beta.** You're an early tester — thank you! Expect rough edges.
-> Please report anything you hit (see [Giving feedback](#giving-feedback-private-beta)).
-
 ---
 
 ## What you get
@@ -44,10 +41,10 @@ cloud account and no telemetry.
 
 ---
 
-## Install (private beta)
+## Install
 
-Knot ships as a `.vsix` file during the beta (it's not on the VS Code
-Marketplace yet). You'll be given a `knot-<version>.vsix`.
+Knot isn't on the VS Code Marketplace yet — it ships as a `.vsix` file
+(`knot-<version>.vsix`).
 
 **Install it, either way:**
 
@@ -135,10 +132,9 @@ downloads from the Ollama registry.
 
 ---
 
-## Giving feedback (private beta)
+## Giving feedback
 
-Your feedback is the whole point of the beta — bug reports, confusion, and "this
-felt slow/awkward" are all useful.
+Bug reports, confusion, and "this felt slow/awkward" are all useful.
 
 **Where:** open a
 [GitHub issue](https://github.com/shobhitsinha04/knot/issues).
