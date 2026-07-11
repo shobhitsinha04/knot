@@ -7,8 +7,8 @@ Marketplace. v1 is macOS / Apple Silicon only.
 
 - **Publisher:** `freshgoldfish` on the
   [Marketplace](https://marketplace.visualstudio.com/manage/publishers/freshgoldfish).
-  Created with a **personal** Microsoft account (not a work/school account — those
-  hit an Azure AD tenant error).
+  Created with a **personal** Microsoft account (not a work/school account, which
+  hits an Azure AD tenant error).
 - **Auth:** an Azure DevOps **Personal Access Token** with scope
   **Marketplace → Manage**, stored once via:
   ```bash
@@ -26,11 +26,11 @@ Marketplace. v1 is macOS / Apple Silicon only.
    patch for fixes, minor for features. (Or let vsce do it with
    `vsce publish patch`, but bumping in the PR keeps `main` and the tag in sync.)
 
-3. **Verify the packaged runtime closure** (see below) — this is the step that
+3. **Verify the packaged runtime closure** (see below). This is the step that
    catches the class of bug that broke v0.1.0/v0.1.1.
 
 4. **Get assets onto `main` BEFORE publishing.** The Marketplace serves README
-   images from GitHub raw at the default branch (`main`) HEAD — *not* from the
+   images from GitHub raw at the default branch (`main`) HEAD, *not* from the
    `.vsix`. If screenshots/logos live only on `dev`, the listing shows broken
    images. So: merge the PR to `main` first, then publish from `main`.
 
@@ -59,8 +59,8 @@ Instead it (and its own runtime dependencies) must be shipped inside the `.vsix`
 via the `.vscodeignore` allowlist. If any package it `require()`s at load time is
 missing, `require("@lancedb/lancedb")` throws at the top of the bundle,
 `activate()` never runs, and the extension is silently dead on install (commands
-show in the palette — they're declared in the manifest — but running one says
-`command not found`, and there is no "Knot" output channel). **This does not
+show in the palette because they're declared in the manifest, but running one
+says `command not found`, and there is no "Knot" output channel). **This does not
 reproduce under F5**, which has the full `node_modules` on disk.
 
 The current runtime closure (loaded when requiring `@lancedb/lancedb`) is:
@@ -90,7 +90,7 @@ dependency (especially `@lancedb/lancedb`), re-verify the closure:**
    Every line must be allowlisted (via `!node_modules/<pkg>/**`) in
    `.vscodeignore`.
 
-2. Prove it from the actual package — pack, extract, and load from the shipped
+2. Prove it from the actual package: pack, extract, and load from the shipped
    tree (this is exactly what VS Code does on install):
    ```bash
    npx @vscode/vsce package -o /tmp/knot-check.vsix
