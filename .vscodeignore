@@ -9,14 +9,21 @@ docs/**
 scripts/**
 dist/perf.cjs
 *.vsix
-# Exclude node_modules EXCEPT the LanceDB native binary + its runtime dep:
+# Exclude node_modules EXCEPT the LanceDB native binary + its runtime closure:
 # @lancedb/lancedb is marked external in esbuild (a platform-specific .node that
 # can't be bundled), so it must ship in the .vsix or the extension fails to load.
-# Everything else (marked, highlight.js, katex, ignore, proper-lockfile) is
-# bundled into dist / media by esbuild and stays excluded.
+# At load it require()s apache-arrow (which in turn needs flatbuffers + tslib) and
+# reflect-metadata — none of which esbuild can bundle because they're reached only
+# through the external @lancedb. Ship the exact runtime closure (verified by
+# tracing require.cache when loading @lancedb/lancedb). Everything else (marked,
+# highlight.js, katex, ignore, proper-lockfile) is bundled into dist / media by
+# esbuild and stays excluded.
 node_modules/**
 !node_modules/@lancedb/**
 !node_modules/reflect-metadata/**
+!node_modules/apache-arrow/**
+!node_modules/flatbuffers/**
+!node_modules/tslib/**
 **/*.ts
 **/*.map
 esbuild.js
