@@ -8,12 +8,12 @@
   <img src="https://img.shields.io/badge/platform-macOS%20Apple%20Silicon-black" alt="Platform: macOS Apple Silicon" />
 </p>
 
-Zero-config, fully local AI coding assistant for VS Code — **Tab autocomplete**,
+Zero-config, fully local AI coding assistant for VS Code: **Tab autocomplete**,
 **Cmd+K inline editing**, **sidebar chat**, and **`@codebase` search**, all powered by
 [Ollama](https://ollama.com) running on your own machine. Nothing you write ever
 leaves your computer: every model call goes to `127.0.0.1`.
 
-Knot brings Copilot-style assistance right into your editor without the cloud —
+Knot brings Copilot-style assistance right into your editor without the cloud:
 no account, no API key, and no telemetry. On first run it detects your hardware,
 pulls right-sized models to match your RAM, and indexes your project so answers
 stay grounded in your actual code. Open a folder and start typing; there's
@@ -39,21 +39,21 @@ A toggle in the chat header turns inline completions on/off live.
 
 ## See it in action
 
-**Tab autocomplete** — pause while typing and accept the ghost text with **Tab**.
+**Tab autocomplete:** pause while typing and accept the ghost text with **Tab**.
 
 ![Tab autocomplete in Knot](media/screenshots/autocomplete.jpeg)
 
-**Cmd+K inline editing** — select code, describe the change, and review the
+**Cmd+K inline editing:** select code, describe the change, and review the
 red/green diff before accepting.
 
 ![Cmd+K inline editing diff in Knot](media/screenshots/cmdk.jpeg)
 
-**Sidebar chat** — ask about your code; answers stream with syntax-highlighted,
+**Sidebar chat:** ask about your code; answers stream with syntax-highlighted,
 one-click-copyable code blocks.
 
 ![Knot sidebar chat](media/screenshots/chat.jpeg)
 
-**`@codebase` search** — ground answers in your indexed project, with the searched
+**`@codebase` search:** ground answers in your indexed project, with the searched
 files cited.
 
 ![Knot @codebase search](media/screenshots/codebase.jpeg)
@@ -64,9 +64,9 @@ files cited.
 
 - **macOS on Apple Silicon.**
 - **VS Code 1.85+.**
-- **~5–30 GB free disk**, depending on your hardware tier — Knot picks
+- **~5–30 GB free disk**, depending on your hardware tier. Knot picks
   model sizes to match your RAM and downloads them on first run.
-- **[Ollama](https://ollama.com)** — if it isn't installed, Knot installs it
+- **[Ollama](https://ollama.com)**: if it isn't installed, Knot installs it
   for you via the official script on first activation and starts it automatically.
 
 You do **not** need to configure anything, sign in, or get an API key. There is no
@@ -97,17 +97,17 @@ Grab `knot-ai-<version>.vsix` (from a release or built locally with
 
 </details>
 
-### First run — guided setup
+### First run: guided setup
 
 The first time you open a folder, Knot's **onboarding opens in the sidebar**
 and sets everything up for you:
 
 1. **Welcome** → click **Get Started**.
-2. **Hardware detection** — picks chat / autocomplete / embedding models to match
+2. **Hardware detection:** picks chat / autocomplete / embedding models to match
    your chip and RAM.
-3. **Download models** — review the models + sizes, click **Download Models**.
+3. **Download models:** review the models + sizes, click **Download Models**.
    The first download takes a few minutes (progress bar + time estimate).
-4. **Indexing** — your workspace is indexed so `@codebase` can search it.
+4. **Indexing:** your workspace is indexed so `@codebase` can search it.
 5. **Ready** → click **Start Coding**.
 
 It runs **once** per machine; after that, opening a folder is instant. If a
@@ -115,7 +115,7 @@ download is interrupted, setup resumes where it left off. Detailed logs are in
 **View → Output → Knot**.
 
 > Need to redo setup (e.g. you cleared your models)? Run **Knot: Reset and
-> Re-run Setup** from the Command Palette — Knot also auto-reruns setup if a
+> Re-run Setup** from the Command Palette. Knot also auto-reruns setup if a
 > required model goes missing.
 
 ### Run from source (developers)
@@ -134,22 +134,22 @@ Development Host with Knot loaded.
 
 ## Using it
 
-- **Autocomplete** — start typing and pause; accept with **Tab**. Rapid typing
+- **Autocomplete:** start typing and pause; accept with **Tab**. Rapid typing
   cancels stale suggestions. A status-bar spinner shows while one is generating.
-- **Cmd+K editing** — select the code to change, press **Cmd+K**, and describe the
+- **Cmd+K editing:** select the code to change, press **Cmd+K**, and describe the
   edit ("add error handling", "convert to async", ...). Review the red/green diff,
   then **Cmd+Enter** to keep it or **Esc** to discard.
-- **Chat** — open the sidebar and ask questions; your active file is sent as
+- **Chat:** open the sidebar and ask questions; your active file is sent as
   context automatically. Code blocks are syntax-highlighted with a copy button.
-- **`@codebase`** — include `@codebase` in your question to search the whole
+- **`@codebase`:** include `@codebase` in your question to search the whole
   indexed project, e.g. `@codebase where do we map RAM to a tier?`. Answers cite
   the files and line ranges they're drawn from.
 
 ### Commands (Cmd+Shift+P)
 
-- **Knot: Rebuild Index** — force a clean, full re-index of the workspace
+- **Knot: Rebuild Index** forces a clean, full re-index of the workspace
   (use if `@codebase` results look stale or incomplete).
-- **Knot: Edit Selection** / **Accept Edit** / **Reject Edit** — the Cmd+K
+- **Knot: Edit Selection**, **Accept Edit**, **Reject Edit**: the Cmd+K
   flow (also bound to Cmd+K / Cmd+Enter / Esc).
 
 ---
@@ -165,10 +165,10 @@ downloads from the Ollama registry.
 
 ## Troubleshooting
 
-- **Setup or model issues** — open the **Knot** Output channel for detailed
+- **Setup or model issues:** open the **Knot** Output channel for detailed
   logs (hardware detection, install, model pulls, request timing).
-- **`@codebase` answers look stale or wrong** — run **Knot: Rebuild Index**.
-- **First completion is slow** — the model is loading; it stays warm afterward.
+- **`@codebase` answers look stale or wrong:** run **Knot: Rebuild Index**.
+- **First completion is slow:** the model is loading; it stays warm afterward.
 - **Known issues, fixes, and their caveats** are catalogued phase by phase in
   [`docs/ISSUES_AND_FIXES.md`](./docs/ISSUES_AND_FIXES.md).
 
@@ -187,10 +187,10 @@ Bug reports, confusion, and "this felt slow/awkward" are all useful.
 - Your setup: macOS version, chip + RAM (e.g. M2 / 16 GB), Knot version.
 - Which feature: autocomplete / Cmd+K / chat / `@codebase` / onboarding.
 - Relevant lines from the **Knot** Output channel
-  (**View → Output → Knot**) — it never contains your code, only setup and
+  (**View → Output → Knot**). It never contains your code, only setup and
   timing logs.
 
-Since everything runs locally, we can't see anything unless you tell us — so
+Since everything runs locally, we can't see anything unless you tell us, so
 concrete repro steps go a long way.
 
 ---
