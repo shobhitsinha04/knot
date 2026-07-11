@@ -4,6 +4,12 @@
 
 # Knot
 
+<p align="center">
+  <a href="https://marketplace.visualstudio.com/items?itemName=freshgoldfish.knot-ai"><img src="https://img.shields.io/visual-studio-marketplace/v/freshgoldfish.knot-ai?label=Marketplace&color=7c6af7" alt="VS Code Marketplace version" /></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=freshgoldfish.knot-ai"><img src="https://img.shields.io/visual-studio-marketplace/i/freshgoldfish.knot-ai?color=7c6af7" alt="Marketplace installs" /></a>
+  <img src="https://img.shields.io/badge/platform-macOS%20Apple%20Silicon-black" alt="Platform: macOS Apple Silicon" />
+</p>
+
 Zero-config, fully local AI coding assistant for VS Code — **Tab autocomplete**,
 **Cmd+K inline editing**, **sidebar chat**, and **`@codebase` search**, all powered by
 [Ollama](https://ollama.com) running on your own machine. Nothing you write ever
@@ -11,9 +17,6 @@ leaves your computer: every model call goes to `127.0.0.1`.
 
 > **v1 scope:** macOS on Apple Silicon (M-series) only. Intel Macs, Windows, and
 > Linux are out of scope for this release. See [`docs/`](./docs) for the full spec.
-
-> **🧪 Private beta.** You're an early tester — thank you! Expect rough edges.
-> Please report anything you hit (see [Giving feedback](#giving-feedback-private-beta)).
 
 ---
 
@@ -27,6 +30,29 @@ leaves your computer: every model call goes to `127.0.0.1`.
 | **`@codebase` search**   | Type `@codebase` in a chat message to ground the answer in your indexed project, with file/line citations.                                                                 |
 
 A toggle in the chat header turns inline completions on/off live.
+
+---
+
+## See it in action
+
+**Tab autocomplete** — pause while typing and accept the ghost text with **Tab**.
+
+![Tab autocomplete in Knot](media/screenshots/autocomplete.jpeg)
+
+**Cmd+K inline editing** — select code, describe the change, and review the
+red/green diff before accepting.
+
+![Cmd+K inline editing diff in Knot](media/screenshots/cmdk.jpeg)
+
+**Sidebar chat** — ask about your code; answers stream with syntax-highlighted,
+one-click-copyable code blocks.
+
+![Knot sidebar chat](media/screenshots/chat.jpeg)
+
+**`@codebase` search** — ground answers in your indexed project, with the searched
+files cited.
+
+![Knot @codebase search](media/screenshots/codebase.jpeg)
 
 ---
 
@@ -44,19 +70,28 @@ cloud account and no telemetry.
 
 ---
 
-## Install (private beta)
+## Install
 
-Knot ships as a `.vsix` file during the beta (it's not on the VS Code
-Marketplace yet). You'll be given a `knot-<version>.vsix`.
+Knot is on the
+[VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=freshgoldfish.knot-ai).
 
-**Install it, either way:**
+- **In VS Code:** open the Extensions view, search **"Knot AI"**, and click
+  **Install**.
+- **In a terminal:** `code --install-extension freshgoldfish.knot-ai`
 
-- **In VS Code:** open the Extensions view → the **⋯** (More Actions) menu →
+Then open a project folder. No build step, no sign-in, no API key.
+
+<details>
+<summary>Or install from a <code>.vsix</code> file</summary>
+
+Grab `knot-ai-<version>.vsix` (from a release or built locally with
+`npx @vscode/vsce package`), then:
+
+- **In VS Code:** Extensions view → the **⋯** (More Actions) menu →
   **Install from VSIX…** → pick the file.
-- **In a terminal:** `code --install-extension knot-0.1.0.vsix`
+- **In a terminal:** `code --install-extension knot-ai-0.1.0.vsix`
 
-Then **reload VS Code** and open a project folder. No build step, no sign-in, no
-API key.
+</details>
 
 ### First run — guided setup
 
@@ -135,10 +170,9 @@ downloads from the Ollama registry.
 
 ---
 
-## Giving feedback (private beta)
+## Giving feedback
 
-Your feedback is the whole point of the beta — bug reports, confusion, and "this
-felt slow/awkward" are all useful.
+Bug reports, confusion, and "this felt slow/awkward" are all useful.
 
 **Where:** open a
 [GitHub issue](https://github.com/shobhitsinha04/knot/issues).

@@ -1,11 +1,14 @@
 {
-  "name": "knot",
-  "displayName": "Knot",
+  "name": "knot-ai",
+  "displayName": "Knot AI",
   "description": "Zero-config, fully local AI coding assistant for VS Code. Autocomplete, chat, and codebase search powered by Ollama — nothing ever leaves your machine.",
-  "version": "0.1.0",
-  "publisher": "localpilot",
-  "private": true,
+  "version": "0.1.1",
+  "publisher": "freshgoldfish",
   "icon": "media/knot.jpg",
+  "galleryBanner": {
+    "color": "#1e1b2e",
+    "theme": "dark"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -52,14 +55,6 @@
       ]
     },
     "commands": [
-      {
-        "command": "localpilot.helloWorld",
-        "title": "Knot: Hello World"
-      },
-      {
-        "command": "localpilot.runSmokeTest",
-        "title": "Knot: Run Phase 1 Smoke Test"
-      },
       {
         "command": "localpilot.editSelection",
         "title": "Knot: Edit Selection"
