@@ -26,6 +26,9 @@ Marketplace. v1 is macOS / Apple Silicon only.
    patch for fixes, minor for features. (Or let vsce do it with
    `vsce publish patch`, but bumping in the PR keeps `main` and the tag in sync.)
 
+   In the same PR, **add an entry to `docs/RELEASES.md`** (a table row plus a
+   short section for the new version). Update RELEASES.md on *every* release.
+
 3. **Verify the packaged runtime closure** (see below). This is the step that
    catches the class of bug that broke v0.1.0/v0.1.1.
 

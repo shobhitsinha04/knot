@@ -6,12 +6,22 @@ Marketplace listing: https://marketplace.visualstudio.com/items?itemName=freshgo
 
 | Version | Date | PR | Summary |
 |---------|------|----|---------|
+| [v0.1.6](#v016) | 2026-07-11 | #25 | Repo moved to the freshgoldfish org; publish updated repository URL |
+| [v0.1.5](#v015) | 2026-07-11 | #22, #23 | Credit Keisha Kaba & Shobhit Sinha as developers in the README |
 | [v0.1.4](#v014) | 2026-07-11 | #18 | Stylistic changes to README + marketplace description |
 | [v0.1.3](#v013) | 2026-07-11 | #17 | Listing polish: README banner, intro copy, release docs |
 | [v0.1.2](#v012) | 2026-07-11 | #16 | Critical fix: bundle runtime deps so the extension activates |
 | [v0.1.1](#v011) | 2026-07-11 | #15 | Initial launch on the VS Code Marketplace |
 
 ---
+
+## v0.1.6
+
+Repository moved into the `freshgoldfish` GitHub org (co-owned by Keisha Kaba and Shobhit Sinha). Published so the updated `freshgoldfish/knot` repository URL, and the "Repository" link on the listing, go live. No functional code changes.
+
+## v0.1.5
+
+Added a "Built by Keisha Kaba & Shobhit Sinha" developer credit near the top of the README, rendered as plain Markdown so it displays consistently on GitHub and the Marketplace listing. Version bump to publish the updated README.
 
 ## v0.1.4
 
