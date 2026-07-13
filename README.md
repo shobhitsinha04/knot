@@ -123,7 +123,7 @@ download is interrupted, setup resumes where it left off. Detailed logs are in
 ### Run from source (developers)
 
 ```bash
-git clone https://github.com/shobhitsinha04/knot.git
+git clone https://github.com/freshgoldfish/knot.git
 cd knot
 npm install
 npm run build      # bundle to dist/extension.js
@@ -181,7 +181,7 @@ downloads from the Ollama registry.
 Bug reports, confusion, and "this felt slow/awkward" are all useful.
 
 **Where:** open a
-[GitHub issue](https://github.com/shobhitsinha04/knot/issues).
+[GitHub issue](https://github.com/freshgoldfish/knot/issues).
 
 **What to include** (so we can act on it fast):
 
