@@ -8,10 +8,6 @@
   <img src="https://img.shields.io/badge/platform-macOS%20Apple%20Silicon-black" alt="Platform: macOS Apple Silicon" />
 </p>
 
-<p align="center">
-  <strong>Built by Keisha Kaba &amp; Shobhit Sinha</strong>
-</p>
-
 Zero-config, fully local AI coding assistant for VS Code: **Tab autocomplete**,
 **Cmd+K inline editing**, **sidebar chat**, and **`@codebase` search**, all powered by
 [Ollama](https://ollama.com) running on your own machine. Nothing you write ever
@@ -22,6 +18,10 @@ no account, no API key, and no telemetry. On first run it detects your hardware,
 pulls right-sized models to match your RAM, and indexes your project so answers
 stay grounded in your actual code. Open a folder and start typing; there's
 nothing else to configure.
+
+<p align="center">
+  <strong>Built by Keisha Kaba &amp; Shobhit Sinha</strong>
+</p>
 
 > **v1 scope:** macOS on Apple Silicon (M-series) only. Intel Macs, Windows, and
 > Linux are out of scope for this release. See [`docs/`](./docs) for the full spec.
