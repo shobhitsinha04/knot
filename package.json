@@ -12,7 +12,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/shobhitsinha04/knot.git"
+    "url": "https://github.com/freshgoldfish/knot.git"
   },
   "engines": {
     "vscode": "^1.85.0",
