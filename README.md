@@ -19,6 +19,10 @@ pulls right-sized models to match your RAM, and indexes your project so answers
 stay grounded in your actual code. Open a folder and start typing; there's
 nothing else to configure.
 
+<p align="center">
+  <strong>Built by Keisha Kaba &amp; Shobhit Sinha</strong>
+</p>
+
 > **v1 scope:** macOS on Apple Silicon (M-series) only. Intel Macs, Windows, and
 > Linux are out of scope for this release. See [`docs/`](./docs) for the full spec.
 
